@@ -15,9 +15,9 @@ export const TemplateFooter = ({ isDocument = true }: TemplateFooterProps) => {
       {isDocument && !branding.brandingHidePoweredBy && (
         <Text className="my-4 text-base text-slate-400">
           <Trans>
-            This document was sent using{' '}
-            <Link className="text-[#7AC455]" href="https://documen.so/mail-footer">
-              Documenso.
+            This document was sent from{' '}
+            <Link className="text-[#193443]" href="https://altitudecontrol.com/">
+              Altitude Control Technology
             </Link>
           </Trans>
         </Text>
@@ -36,9 +36,9 @@ export const TemplateFooter = ({ isDocument = true }: TemplateFooterProps) => {
         </Text>
       ) : (
         <Text className="my-8 text-sm text-slate-400">
-          Documenso, Inc.
+          Altitude Control Technology LLC
           <br />
-          2261 Market Street, #5211, San Francisco, CA 94114, USA
+          210 Edwards Village Blvd Unit C-103 PO BOX 98, Edwards CO 81632 USA
         </Text>
       )}
     </Section>

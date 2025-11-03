@@ -1,0 +1,83 @@
+name: Deploy Documenso to ECS (staging & prod)
+
+on:
+  push:
+    branches:
+      - act-custom
+    paths:
+      - backend/documenso/**
+      - infrastructure/**
+      - .github/workflows/documenso-ecs-deploy.yml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy (staging or prod)'
+        required: true
+        default: 'prod'
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: documenso-custom
+  ECS_CLUSTER: documenso-${{ github.event.inputs.environment || 'prod' }}
+  ECS_SERVICE: documenso-web-${{ github.event.inputs.environment || 'prod' }}
+  CONTAINER_NAME: documenso
+  IMAGE_TAG: ${{ github.ref_name }}-${{ github.run_number }}
+
+jobs:
+  build-and-deploy:
+    name: Build container image and deploy to ECS
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DOCUMENSO_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Documenso container image
+        run: |
+          docker build \
+            --file backend/documenso/Dockerfile \
+            --tag ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
+            backend/documenso
+
+      - name: Push Documenso image to ECR
+        run: |
+          docker push ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+      - name: Update task definition image
+        id: render-task
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: infrastructure/task-definitions/documenso-task.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+      - name: Deploy to ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-task.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Post-deploy smoke check
+        run: |
+          aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }} \
+            --query "services[0].deployments"
+
+      - name: Notify deployment
+        run: echo "✅ Deployed Documenso ${{ env.IMAGE_TAG }} to ${{ github.event.inputs.environment || 'prod' }}"
