@@ -1,5 +1,5 @@
 {
-  "family": "documenso",
+  "family": "documenso-prod-DocumensoTaskDefinition-yavzgQYnQXqu",
   "networkMode": "awsvpc",
   "requiresCompatibilities": [
     "FARGATE"
