@@ -18,8 +18,8 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: documenso-custom
-  ECS_CLUSTER: documenso-${{ github.event.inputs.environment || 'prod' }}
-  ECS_SERVICE: documenso-web-${{ github.event.inputs.environment || 'prod' }}
+  ECS_CLUSTER: ${{ github.event.inputs.environment || 'prod' }}-documenso-cluster
+  ECS_SERVICE: documenso-${{ github.event.inputs.environment || 'prod' }}-DocumensoService-izAQVoJ92ltQ
   CONTAINER_NAME: documenso
   IMAGE_TAG: ${{ github.ref_name }}-${{ github.run_number }}
 
