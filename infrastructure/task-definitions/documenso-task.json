@@ -1,0 +1,188 @@
+{
+  "family": "documenso",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::624464340576:role/prod-documenso-task-execution",
+  "taskRoleArn": "arn:aws:iam::624464340576:role/prod-documenso-task",
+  "containerDefinitions": [
+    {
+      "name": "documenso",
+      "image": "624464340576.dkr.ecr.us-east-1.amazonaws.com/documenso-custom:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:username}}:{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:password}}@prod-documenso-db.cqcb3ivwq3e0.us-east-1.rds.amazonaws.com:5432/documenso?schema=public"
+        },
+        {
+          "name": "DIRECT_URL",
+          "value": "postgresql://{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:username}}:{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:password}}@prod-documenso-db.cqcb3ivwq3e0.us-east-1.rds.amazonaws.com:5432/documenso?schema=public"
+        },
+        {
+          "name": "NEXT_PRIVATE_DATABASE_URL",
+          "value": "postgresql://{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:username}}:{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:password}}@prod-documenso-db.cqcb3ivwq3e0.us-east-1.rds.amazonaws.com:5432/documenso?schema=public"
+        },
+        {
+          "name": "NEXT_PRIVATE_DIRECT_DATABASE_URL",
+          "value": "postgresql://{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:username}}:{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:password}}prod-documenso-db.cqcb3ivwq3e0.us-east-1.rds.amazonaws.com:5432/documenso?schema=public&connection_limit=1"
+        },
+        {
+          "name": "REDIS_URL",
+          "value": "redis://doc-do-1rhe33sr54huo.gltwk5.0001.use1.cache.amazonaws.com:6379"
+        },
+        {
+          "name": "STORAGE_S3_BUCKET",
+          "value": "prod-documenso-assets-624464340576"
+        },
+        {
+          "name": "STORAGE_S3_REGION",
+          "value": "us-east-1"
+        },
+        {
+          "name": "STORAGE_S3_PREFIX",
+          "value": "documenso"
+        },
+        {
+          "name": "NEXT_PRIVATE_UPLOAD_TRANSPORT",
+          "value": "s3"
+        },
+        {
+          "name": "NEXT_PUBLIC_UPLOAD_TRANSPORT",
+          "value": "s3"
+        },
+        {
+          "name": "NEXT_PRIVATE_UPLOAD_BUCKET",
+          "value": "prod-documenso-assets-624464340576"
+        },
+        {
+          "name": "NEXT_PRIVATE_UPLOAD_REGION",
+          "value": "us-east-1"
+        },
+        {
+          "name": "NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE",
+          "value": "false"
+        },
+        {
+          "name": "REMINDER_QUEUE_URL",
+          "value": "https://sqs.us-east-1.amazonaws.com/624464340576/prod-documenso-reminders"
+        },
+        {
+          "name": "WEBHOOK_SECRET_SSM_PATH",
+          "value": "/prod/documenso/webhook-secret"
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "value": "https://documents.altitudecontrol.com"
+        },
+        {
+          "name": "NEXTAUTH_URL_INTERNAL",
+          "value": "https://documents.altitudecontrol.com"
+        },
+        {
+          "name": "NEXT_PUBLIC_APP_URL",
+          "value": "https://documents.altitudecontrol.com"
+        },
+        {
+          "name": "NEXT_PUBLIC_API_URL",
+          "value": "https://documents.altitudecontrol.com"
+        },
+        {
+          "name": "NEXT_PUBLIC_WEBAPP_URL",
+          "value": "https://documents.altitudecontrol.com"
+        },
+        {
+          "name": "NEXT_PUBLIC_BASE_URL",
+          "value": "https://documents.altitudecontrol.com"
+        },
+        {
+          "name": "DOCUMENSO_BASE_URL",
+          "value": "https://documents.altitudecontrol.com"
+        },
+        {
+          "name": "DOCUMENSO_PUBLIC_URL",
+          "value": "https://documents.altitudecontrol.com"
+        },
+        {
+          "name": "APP_URL",
+          "value": "https://documents.altitudecontrol.com"
+        },
+        {
+          "name": "URL",
+          "value": "https://documents.altitudecontrol.com"
+        },
+        {
+          "name": "ORIGIN",
+          "value": "https://documents.altitudecontrol.com"
+        },
+        {
+          "name": "NEXT_PUBLIC_DISABLE_SIGNUP",
+          "value": "true"
+        },
+        {
+          "name": "NEXT_PRIVATE_SIGNING_TRANSPORT",
+          "value": "local"
+        },
+        {
+          "name": "NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH",
+          "value": "/opt/documenso/cert.p12"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "NEXTAUTH_SECRET",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/nextauth-secret"
+        },
+        {
+          "name": "NEXT_PRIVATE_SMTP_USERNAME",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-user"
+        },
+        {
+          "name": "NEXT_PRIVATE_SMTP_PASSWORD",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-password"
+        },
+        {
+          "name": "NEXT_PRIVATE_GOOGLE_CLIENT_ID",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/google-client-id"
+        },
+        {
+          "name": "NEXT_PRIVATE_GOOGLE_CLIENT_SECRET",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/google-client-secret"
+        },
+        {
+          "name": "NEXT_PRIVATE_ENCRYPTION_KEY",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/encryption-key"
+        },
+        {
+          "name": "NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/encryption-secondary"
+        },
+        {
+          "name": "NEXT_PRIVATE_SIGNING_PASSPHRASE",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/signing-passphrase"
+        },
+        {
+          "name": "NEXT_PRIVATE_SIGNING_LOCAL_FILE_CONTENTS",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/signing-file"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/prod/documenso",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
