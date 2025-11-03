@@ -48,9 +48,9 @@ jobs:
       - name: Build Documenso container image
         run: |
           docker build \
-            --file backend/documenso/Dockerfile \
+            --file docker/Dockerfile \
             --tag ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
-            backend/documenso
+            .
 
       - name: Push Documenso image to ECR
         run: |
