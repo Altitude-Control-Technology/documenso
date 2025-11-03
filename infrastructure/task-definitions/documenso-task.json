@@ -6,8 +6,8 @@
   ],
   "cpu": "512",
   "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::624464340576:role/prod-documenso-task-execution",
-  "taskRoleArn": "arn:aws:iam::624464340576:role/prod-documenso-task",
+  "executionRoleArn": "arn:aws:iam::624464340576:role/documenso-prod-DocumensoTaskExecutionRole-dMCDafZ0oZ9f",
+  "taskRoleArn": "arn:aws:iam::624464340576:role/documenso-prod-DocumensoTaskRole-mSsjjzU9Eq5c",
   "containerDefinitions": [
     {
       "name": "documenso",
