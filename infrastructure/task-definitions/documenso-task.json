@@ -21,22 +21,6 @@
       ],
       "environment": [
         {
-          "name": "DATABASE_URL",
-          "value": "postgresql://{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:username}}:{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:password}}@prod-documenso-db.cqcb3ivwq3e0.us-east-1.rds.amazonaws.com:5432/documenso?schema=public"
-        },
-        {
-          "name": "DIRECT_URL",
-          "value": "postgresql://{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:username}}:{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:password}}@prod-documenso-db.cqcb3ivwq3e0.us-east-1.rds.amazonaws.com:5432/documenso?schema=public"
-        },
-        {
-          "name": "NEXT_PRIVATE_DATABASE_URL",
-          "value": "postgresql://{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:username}}:{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:password}}@prod-documenso-db.cqcb3ivwq3e0.us-east-1.rds.amazonaws.com:5432/documenso?schema=public"
-        },
-        {
-          "name": "NEXT_PRIVATE_DIRECT_DATABASE_URL",
-          "value": "postgresql://{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:username}}:{{resolve:secretsmanager:prod/pgsql/documenso-0ZQmC0:SecretString:password}}prod-documenso-db.cqcb3ivwq3e0.us-east-1.rds.amazonaws.com:5432/documenso?schema=public&connection_limit=1"
-        },
-        {
           "name": "REDIS_URL",
           "value": "redis://doc-do-1rhe33sr54huo.gltwk5.0001.use1.cache.amazonaws.com:6379"
         },
@@ -173,6 +157,22 @@
         {
           "name": "NEXT_PRIVATE_SIGNING_LOCAL_FILE_CONTENTS",
           "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/signing-file"
+        },
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/pgsql"
+        },
+        {
+          "name": "DIRECT_URL",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/pgsql"
+        },
+        {
+          "name": "NEXT_PRIVATE_DATABASE_URL",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/pgsql"
+        },
+        {
+          "name": "NEXT_PRIVATE_DIRECT_DATABASE_URL",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/pgsql/direct"
         }
       ],
       "logConfiguration": {
