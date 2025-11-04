@@ -1,0 +1,968 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Documenso self-hosted on AWS with Amplify frontend, ECS Fargate backend,
+  managed Postgres (RDS), Redis (ElastiCache), S3 for assets, and Lambda-based
+  custom automations (reminders, expirations, HubSpot sync). This template is
+  a starting point and should be customized for your environment and security
+  requirements (for example: CIDR ranges, secrets storage, enhanced monitoring).
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: prod
+    Description: Environment name used for tagging and naming resources.
+
+  VpcCidr:
+    Type: String
+    Default: 10.30.0.0/16
+    Description: CIDR block for the new VPC.
+
+  PublicSubnet1Cidr:
+    Type: String
+    Default: 10.30.0.0/20
+  PublicSubnet2Cidr:
+    Type: String
+    Default: 10.30.16.0/20
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: 10.30.32.0/20
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: 10.30.48.0/20
+
+  DocumensoImageUri:
+    Type: String
+    Default: 624464340576.dkr.ecr.us-east-1.amazonaws.com/documenso-custom:act-custom-manual
+    Description: Container image URI for Documenso backend.
+
+  DocumensoContainerPort:
+    Type: Number
+    Default: 3000
+    Description: Container port exposed by Documenso backend.
+
+  DesiredCount:
+    Type: Number
+    Default: 1
+    Description: Desired number of Documenso tasks to run.
+
+  DocumensoCpu:
+    Type: Number
+    Default: 512
+  DocumensoMemory:
+    Type: Number
+    Default: 1024
+
+  DatabaseCredentialsSecretArn:
+    Type: String
+    Default: arn:aws:secretsmanager:us-east-1:624464340576:secret:prod/pgsql/documenso-0ZQmC0
+    Description: ARN of the Secrets Manager secret containing documenso Postgres credentials.
+
+  ReminderLambdaImageUri:
+    Type: String
+    Default: ""
+    Description: Optional ECR image URI for the reminder/expiration Lambda (if using container image packaging).
+
+  ReminderLambdaS3Bucket:
+    Type: String
+    Default: act-documenso-artifacts
+    Description: Optional S3 bucket with Lambda deployment ZIP (if using ZIP packaging instead of container image).
+
+  ReminderLambdaS3Key:
+    Type: String
+    Default: documenso-reminders.zip
+    Description: Optional S3 key for Lambda ZIP artifact.
+
+  NextAuthSecretParam:
+    Type: String
+    Default: /prod/documenso/nextauth-secret
+    Description: SSM parameter path containing the NextAuth secret.
+
+  SmtpHost:
+    Type: String
+    Default: ""
+    Description: Optional SMTP host for transactional email (leave blank to disable email).
+
+  SmtpTransport:
+    Type: String
+    Default: smtp-auth
+    Description: SMTP transport strategy Documenso expects (e.g. smtp-auth).
+
+  SmtpPort:
+    Type: String
+    Default: "587"
+    Description: SMTP port when email is enabled.
+
+  SmtpFromEmail:
+    Type: String
+    Default: ""
+    Description: From address used for Documenso system email.
+
+  SmtpFromName:
+    Type: String
+    Default: "Documenso"
+    Description: Optional display name used in the From header.
+
+  SmtpTls:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Whether to enable TLS when connecting to SMTP.
+
+  SmtpUserParam:
+    Type: String
+    Default: ""
+    Description: SSM parameter path containing the SMTP username (SecureString recommended).
+
+  SmtpPasswordParam:
+    Type: String
+    Default: ""
+    Description: SSM parameter path containing the SMTP password (SecureString recommended).
+
+  GoogleClientIdParam:
+    Type: String
+    Default: ""
+    Description: SSM parameter path containing the Google OAuth client ID (SecureString recommended).
+  GoogleClientSecretParam:
+    Type: String
+    Default: ""
+    Description: SSM parameter path containing the Google OAuth client secret (SecureString recommended).
+
+  EncryptionKeyParam:
+    Type: String
+    Default: ""
+    Description: SSM parameter path containing the primary encryption key (SecureString recommended).
+
+  EncryptionSecondaryKeyParam:
+    Type: String
+    Default: ""
+    Description: Optional SSM parameter path containing the secondary encryption key (SecureString recommended).
+
+  SigningTransport:
+    Type: String
+    Default: local
+    AllowedValues:
+      - local
+    Description: Signing transport to use (local is currently supported).
+
+  SigningLocalFilePath:
+    Type: String
+    Default: /opt/documenso/cert.p12
+    Description: Filesystem path where Documenso should write the signing certificate.
+
+  SigningPassphraseParam:
+    Type: String
+    Default: ""
+    Description: SSM parameter path containing the signing certificate passphrase (SecureString recommended).
+
+  SigningFileContentsParam:
+    Type: String
+    Default: ""
+    Description: SSM parameter path containing the base64-encoded signing certificate (SecureString recommended).
+
+  UploadBucket:
+    Type: String
+    Default: ""
+    Description: Bucket name to store uploaded documents (used by the code service).
+
+Conditions:
+  UseReminderLambdaZip: !And
+    - !Not [!Equals [!Ref ReminderLambdaS3Bucket, ""]]
+    - !Not [!Equals [!Ref ReminderLambdaS3Key, ""]]
+  UseReminderLambdaImage: !Not [!Equals [!Ref ReminderLambdaImageUri, ""]]
+  UseSmtpHost: !Not [!Equals [!Ref SmtpHost, ""]]
+  UseSmtpFromEmail: !Not [!Equals [!Ref SmtpFromEmail, ""]]
+  UseSmtpFromName: !Not [!Equals [!Ref SmtpFromName, ""]]
+  UseSmtpUserParam: !Not [!Equals [!Ref SmtpUserParam, ""]]
+  UseSmtpPasswordParam: !Not [!Equals [!Ref SmtpPasswordParam, ""]]
+  UseGoogleClientIdParam: !Not [!Equals [!Ref GoogleClientIdParam, ""]]
+  UseGoogleClientSecretParam: !Not [!Equals [!Ref GoogleClientSecretParam, ""]]
+  UseEncryptionKeyParam: !Not [!Equals [!Ref EncryptionKeyParam, ""]]
+  UseEncryptionSecondaryKeyParam: !Not [!Equals [!Ref EncryptionSecondaryKeyParam, ""]]
+  UseSigningPassphraseParam: !Not [!Equals [!Ref SigningPassphraseParam, ""]]
+  UseSigningFileContentsParam: !Not [!Equals [!Ref SigningFileContentsParam, ""]]
+  UseUploadBucket: !Not [!Equals [!Ref UploadBucket, ""]]
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-documenso-vpc"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnet1Cidr
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-public-a"
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnet2Cidr
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-public-b"
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnet1Cidr
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-private-a"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnet2Cidr
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-private-b"
+
+  NatEip1:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatEip2:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEip1.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEip2.AllocationId
+      SubnetId: !Ref PublicSubnet2
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+
+  PrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable1
+
+  PrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable2
+
+  ApplicationLoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupDescription: Allow inbound HTTP/HTTPS to ALB
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  DocumensoServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupDescription: Allow ALB to reach Documenso ECS service
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref DocumensoContainerPort
+          ToPort: !Ref DocumensoContainerPort
+          SourceSecurityGroupId: !Ref ApplicationLoadBalancerSecurityGroup
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupDescription: Allow Documenso ECS tasks to reach Postgres
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref DocumensoServiceSecurityGroup
+
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupDescription: Allow Documenso ECS tasks to reach Redis
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref DocumensoServiceSecurityGroup
+
+  ReminderLambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupDescription: Allow Lambda to access private resources
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${EnvironmentName}-documenso-alb"
+      Scheme: internet-facing
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: "60"
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref ApplicationLoadBalancerSecurityGroup
+
+  ApplicationTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${EnvironmentName}-documenso-tg"
+      Port: !Ref DocumensoContainerPort
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !Ref Vpc
+      HealthCheckPath: /api/health
+
+  ApplicationListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: arn:aws:acm:us-east-1:624464340576:certificate/8b1d7cfa-49dc-4121-a35d-338b846e4f64
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ApplicationTargetGroup
+
+  HttpRedirectListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: "443"
+            StatusCode: HTTP_301
+
+  DocumensoCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${EnvironmentName}-documenso-cluster"
+      Configuration:
+        ExecuteCommandConfiguration:
+          Logging: DEFAULT
+
+  DocumensoTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: DocumensoExecutionSecrets
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${NextAuthSecretParam}"
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/prod/documenso/*"
+              - !If
+                - UseSmtpUserParam
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameters
+                    - ssm:GetParameter
+                  Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SmtpUserParam}"
+                - !Ref AWS::NoValue
+              - !If
+                - UseSmtpPasswordParam
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameters
+                    - ssm:GetParameter
+                  Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SmtpPasswordParam}"
+                - !Ref AWS::NoValue
+              - !If
+                - UseGoogleClientSecretParam
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameters
+                    - ssm:GetParameter
+                  Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GoogleClientSecretParam}"
+                - !Ref AWS::NoValue
+              - !If
+                - UseSigningPassphraseParam
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameters
+                    - ssm:GetParameter
+                  Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SigningPassphraseParam}"
+                - !Ref AWS::NoValue
+              - !If
+                - UseSigningFileContentsParam
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameters
+                    - ssm:GetParameter
+                  Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SigningFileContentsParam}"
+                - !Ref AWS::NoValue
+              - !If
+                - UseEncryptionKeyParam
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameters
+                    - ssm:GetParameter
+                  Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${EncryptionKeyParam}"
+                - !Ref AWS::NoValue
+              - !If
+                - UseEncryptionSecondaryKeyParam
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameters
+                    - ssm:GetParameter
+                  Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${EncryptionSecondaryKeyParam}"
+                - !Ref AWS::NoValue
+              - !If
+                - UseGoogleClientIdParam
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameters
+                    - ssm:GetParameter
+                  Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GoogleClientIdParam}"
+                - !Ref AWS::NoValue
+
+  DocumensoTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DocumensoSecretsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                Resource:
+                  - !Ref DatabaseCredentialsSecretArn
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${EnvironmentName}/documenso/*"
+        - PolicyName: DocumensoS3Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub "${DocumensoAssetBucket.Arn}/*"
+
+  DocumensoLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${EnvironmentName}/documenso"
+      RetentionInDays: 30
+
+  DocumensoTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref DocumensoCpu
+      Memory: !Ref DocumensoMemory
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt DocumensoTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt DocumensoTaskRole.Arn
+      ContainerDefinitions:
+        - Name: documenso
+          Image: !Ref DocumensoImageUri
+          PortMappings:
+            - ContainerPort: !Ref DocumensoContainerPort
+          Environment:
+            - Name: DATABASE_URL
+              Value: !Sub "postgresql://{{resolve:secretsmanager:${DatabaseCredentialsSecretArn}:SecretString:username}}:{{resolve:secretsmanager:${DatabaseCredentialsSecretArn}:SecretString:password}}@${DocumensoDbInstance.Endpoint.Address}:5432/documenso?schema=public"
+            - Name: DIRECT_URL
+              Value: !Sub "postgresql://{{resolve:secretsmanager:${DatabaseCredentialsSecretArn}:SecretString:username}}:{{resolve:secretsmanager:${DatabaseCredentialsSecretArn}:SecretString:password}}@${DocumensoDbInstance.Endpoint.Address}:5432/documenso?schema=public"
+            - Name: NEXT_PRIVATE_DATABASE_URL
+              Value: !Sub "postgresql://{{resolve:secretsmanager:${DatabaseCredentialsSecretArn}:SecretString:username}}:{{resolve:secretsmanager:${DatabaseCredentialsSecretArn}:SecretString:password}}@${DocumensoDbInstance.Endpoint.Address}:5432/documenso?schema=public"
+            - Name: NEXT_PRIVATE_DIRECT_DATABASE_URL
+              Value: !Sub "postgresql://{{resolve:secretsmanager:${DatabaseCredentialsSecretArn}:SecretString:username}}:{{resolve:secretsmanager:${DatabaseCredentialsSecretArn}:SecretString:password}}@${DocumensoDbInstance.Endpoint.Address}:5432/documenso?schema=public&connection_limit=1"
+            - Name: REDIS_URL
+              Value: !Sub "redis://${DocumensoRedis.RedisEndpoint.Address}:6379"
+            - Name: STORAGE_S3_BUCKET
+              Value: !Ref DocumensoAssetBucket
+            - Name: STORAGE_S3_REGION
+              Value: !Ref AWS::Region
+            - Name: STORAGE_S3_PREFIX
+              Value: documenso
+            - Name: NEXT_PRIVATE_UPLOAD_TRANSPORT
+              Value: s3
+            - Name: NEXT_PUBLIC_UPLOAD_TRANSPORT
+              Value: s3
+            - Name: NEXT_PRIVATE_UPLOAD_BUCKET
+              Value: !Ref UploadBucket
+            - Name: REMINDER_QUEUE_URL
+              Value: !Ref ReminderQueue
+            - Name: WEBHOOK_SECRET_SSM_PATH
+              Value: !Sub "/${EnvironmentName}/documenso/webhook-secret"
+            - Name: NEXTAUTH_URL
+              Value: https://documents.altitudecontrol.com
+            - Name: NEXTAUTH_URL_INTERNAL
+              Value: https://documents.altitudecontrol.com
+            - Name: NEXT_PUBLIC_APP_URL
+              Value: https://documents.altitudecontrol.com
+            - Name: NEXT_PUBLIC_API_URL
+              Value: https://documents.altitudecontrol.com
+            - Name: NEXT_PUBLIC_WEBAPP_URL
+              Value: https://documents.altitudecontrol.com
+            - Name: NEXT_PUBLIC_BASE_URL
+              Value: https://documents.altitudecontrol.com
+            - Name: DOCUMENSO_BASE_URL
+              Value: https://documents.altitudecontrol.com
+            - Name: DOCUMENSO_PUBLIC_URL
+              Value: https://documents.altitudecontrol.com
+            - Name: APP_URL
+              Value: https://documents.altitudecontrol.com
+            - Name: URL
+              Value: https://documents.altitudecontrol.com
+            - Name: ORIGIN
+              Value: https://documents.altitudecontrol.com
+            - Name: NEXT_PUBLIC_DISABLE_SIGNUP
+              Value: "true"
+            - !If
+              - UseSmtpHost
+              - Name: NEXT_PRIVATE_SMTP_TRANSPORT
+                Value: !Ref SmtpTransport
+              - !Ref AWS::NoValue
+            - !If
+              - UseSmtpHost
+              - Name: NEXT_PRIVATE_SMTP_HOST
+                Value: !Ref SmtpHost
+              - !Ref AWS::NoValue
+            - !If
+              - UseSmtpHost
+              - Name: NEXT_PRIVATE_SMTP_PORT
+                Value: !Ref SmtpPort
+              - !Ref AWS::NoValue
+            - !If
+              - UseSmtpFromEmail
+              - Name: NEXT_PRIVATE_SMTP_FROM_ADDRESS
+                Value: !Ref SmtpFromEmail
+              - !Ref AWS::NoValue
+            - !If
+              - UseSmtpFromName
+              - Name: NEXT_PRIVATE_SMTP_FROM_NAME
+                Value: !Ref SmtpFromName
+              - !Ref AWS::NoValue
+            - !If
+              - UseSmtpHost
+              - Name: NEXT_PRIVATE_SMTP_SECURE
+                Value: !Ref SmtpTls
+              - !Ref AWS::NoValue
+            - !If
+              - UseUploadBucket
+              - Name: NEXT_PRIVATE_UPLOAD_BUCKET
+                Value: !Ref UploadBucket
+              - !Ref AWS::NoValue
+            - Name: NEXT_PRIVATE_UPLOAD_REGION
+              Value: !Ref AWS::Region
+            - Name: NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE
+              Value: "false"
+            - Name: NEXT_PRIVATE_SIGNING_TRANSPORT
+              Value: !Ref SigningTransport
+            - Name: NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH
+              Value: !Ref SigningLocalFilePath
+          Secrets:
+            - Name: NEXTAUTH_SECRET
+              ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${NextAuthSecretParam}"
+            - !If
+              - UseSmtpUserParam
+              - Name: NEXT_PRIVATE_SMTP_USERNAME
+                ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SmtpUserParam}"
+              - !Ref AWS::NoValue
+            - !If
+              - UseSmtpPasswordParam
+              - Name: NEXT_PRIVATE_SMTP_PASSWORD
+                ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SmtpPasswordParam}"
+              - !Ref AWS::NoValue
+            - !If
+              - UseGoogleClientIdParam
+              - Name: NEXT_PRIVATE_GOOGLE_CLIENT_ID
+                ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GoogleClientIdParam}"
+              - !Ref AWS::NoValue
+            - !If
+              - UseGoogleClientSecretParam
+              - Name: NEXT_PRIVATE_GOOGLE_CLIENT_SECRET
+                ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GoogleClientSecretParam}"
+              - !Ref AWS::NoValue
+            - !If
+              - UseEncryptionKeyParam
+              - Name: NEXT_PRIVATE_ENCRYPTION_KEY
+                ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${EncryptionKeyParam}"
+              - !Ref AWS::NoValue
+            - !If
+              - UseEncryptionSecondaryKeyParam
+              - Name: NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY
+                ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${EncryptionSecondaryKeyParam}"
+              - !Ref AWS::NoValue
+            - !If
+              - UseSigningPassphraseParam
+              - Name: NEXT_PRIVATE_SIGNING_PASSPHRASE
+                ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SigningPassphraseParam}"
+              - !Ref AWS::NoValue
+            - !If
+              - UseSigningFileContentsParam
+              - Name: NEXT_PRIVATE_SIGNING_LOCAL_FILE_CONTENTS
+                ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SigningFileContentsParam}"
+              - !Ref AWS::NoValue
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref DocumensoLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  DocumensoService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ApplicationListener
+      - DocumensoDbInstance
+      - DocumensoRedis
+    Properties:
+      Cluster: !Ref DocumensoCluster
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      TaskDefinition: !Ref DocumensoTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref DocumensoServiceSecurityGroup
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+      LoadBalancers:
+        - ContainerName: documenso
+          ContainerPort: !Ref DocumensoContainerPort
+          TargetGroupArn: !Ref ApplicationTargetGroup
+
+  DocumensoDbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for Documenso RDS
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  DocumensoDbInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub "${EnvironmentName}-documenso-db"
+      AllocatedStorage: 20
+      DBInstanceClass: db.t4g.small
+      Engine: postgres
+      PubliclyAccessible: false
+      MasterUsername: !Sub "{{resolve:secretsmanager:${DatabaseCredentialsSecretArn}:SecretString:username}}"
+      MasterUserPassword: !Sub "{{resolve:secretsmanager:${DatabaseCredentialsSecretArn}:SecretString:password}}"
+      DBSubnetGroupName: !Ref DocumensoDbSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+      StorageEncrypted: true
+      BackupRetentionPeriod: 7
+
+  DocumensoRedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Private subnets for Documenso Redis
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  DocumensoRedis:
+    Type: AWS::ElastiCache::CacheCluster
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      CacheNodeType: cache.t4g.micro
+      Engine: redis
+      NumCacheNodes: 1
+      VpcSecurityGroupIds:
+        - !Ref RedisSecurityGroup
+      CacheSubnetGroupName: !Ref DocumensoRedisSubnetGroup
+
+  DocumensoAssetBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${EnvironmentName}-documenso-assets-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [GET, PUT, POST, HEAD]
+            AllowedOrigins: ["*"]
+            AllowedHeaders: ["*"]
+            MaxAge: 3000
+
+  ReminderQueue:
+    Type: AWS::SQS::Queue
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      QueueName: !Sub "${EnvironmentName}-documenso-reminders"
+      VisibilityTimeout: 120
+      MessageRetentionPeriod: 1209600
+
+  ReminderLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+      Policies:
+        - PolicyName: ReminderLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt ReminderQueue.Arn
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource:
+                  - !Ref DatabaseCredentialsSecretArn
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${EnvironmentName}/documenso/webhook-secret"
+
+  ReminderLambdaFunction:
+    Type: AWS::Lambda::Function
+    Condition: UseReminderLambdaZip
+    Properties:
+      FunctionName: !Sub "${EnvironmentName}-documenso-reminder-handler-zip"
+      Handler: dist/index.handler
+      Role: !GetAtt ReminderLambdaRole.Arn
+      Runtime: nodejs20.x
+      Code:
+        S3Bucket: !Ref ReminderLambdaS3Bucket
+        S3Key: !Ref ReminderLambdaS3Key
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref ReminderLambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+      Environment:
+        Variables:
+          DOCUMENSO_API_BASE_URL: https://documenso-api.altitudecontrol.com
+          DOCUMENSO_WEBHOOK_SECRET_PARAM: !Sub "/${EnvironmentName}/documenso/webhook-secret"
+          REMINDER_QUEUE_URL: !Ref ReminderQueue
+
+  ReminderLambdaFunctionImage:
+    Type: AWS::Lambda::Function
+    Condition: UseReminderLambdaImage
+    Properties:
+      PackageType: Image
+      FunctionName: !Sub "${EnvironmentName}-documenso-reminder-handler-image"
+      Role: !GetAtt ReminderLambdaRole.Arn
+      Code:
+        ImageUri: !Ref ReminderLambdaImageUri
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref ReminderLambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+      Environment:
+        Variables:
+          DOCUMENSO_API_BASE_URL: https://documenso-api.altitudecontrol.com
+          DOCUMENSO_WEBHOOK_SECRET_PARAM: !Sub "/${EnvironmentName}/documenso/webhook-secret"
+          REMINDER_QUEUE_URL: !Ref ReminderQueue
+
+  ReminderEventTriggerZip:
+    Type: AWS::Lambda::EventSourceMapping
+    Condition: UseReminderLambdaZip
+    Properties:
+      BatchSize: 5
+      Enabled: true
+      EventSourceArn: !GetAtt ReminderQueue.Arn
+      FunctionName: !Ref ReminderLambdaFunction
+
+  ReminderEventTriggerImage:
+    Type: AWS::Lambda::EventSourceMapping
+    Condition: UseReminderLambdaImage
+    Properties:
+      BatchSize: 5
+      Enabled: true
+      EventSourceArn: !GetAtt ReminderQueue.Arn
+      FunctionName: !Ref ReminderLambdaFunctionImage
+
+  ReminderScheduler:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${EnvironmentName}-documenso-reminder-schedule"
+      ScheduleExpression: rate(15 minutes)
+      State: ENABLED
+      Targets:
+        - Id: reminder-sqs
+          Arn: !GetAtt ReminderQueue.Arn
+          RoleArn: !GetAtt ReminderSchedulerRole.Arn
+          Input: |
+            { "type": "SCHEDULED_CHECK" }
+
+  ReminderSchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowSQSPublish
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt ReminderQueue.Arn
+
+Outputs:
+  LoadBalancerDNS:
+    Description: DNS name of the Documenso ALB.
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+  ReminderQueueUrl:
+    Description: URL of the reminder/expiration queue.
+    Value: !Ref ReminderQueue
+  DocumensoBucketName:
+    Description: S3 bucket for Documenso asset storage.
+    Value: !Ref DocumensoAssetBucket

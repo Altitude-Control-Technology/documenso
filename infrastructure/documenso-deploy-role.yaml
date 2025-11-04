@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM role for GitHub Actions ECS/ECR deploy (Documenso CI/CD)
+
+Resources:
+  DocumensoDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: DocumensoDeployRole
+      Description: Allows GitHub Actions from Altitude-Control-Technology/documenso (act-custom branch) to deploy Documenso to ECS/ECR.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: arn:aws:iam::624464340576:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: repo:Altitude-Control-Technology/documenso:ref:refs/heads/act-custom
+
+      Policies:
+        - PolicyName: DocumensoECSDeployPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ECRPermissions
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                Resource: "*"
+
+              - Sid: ECSDeploymentPermissions
+                Effect: Allow
+                Action:
+                  - ecs:DescribeClusters
+                  - ecs:DescribeServices
+                  - ecs:DescribeTaskDefinition
+                  - ecs:RegisterTaskDefinition
+                  - ecs:UpdateService
+                Resource: "*"
+
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:DescribeLogStreams
+                  - logs:GetLogEvents
+                Resource: "*"
+
+              - Sid: CloudFormationOptional
+                Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:UpdateStack
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                Resource: "*"
+
+              - Sid: PassDocumensoTaskRoles
+                Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource:
+                  - arn:aws:iam::624464340576:role/documenso-prod-DocumensoTaskExecutionRole-dMCDafZ0oZ9f
+                  - arn:aws:iam::624464340576:role/documenso-prod-DocumensoTaskRole-mSsjjzU9Eq5c
+
+Outputs:
+  RoleArn:
+    Description: ARN of the DocumensoDeployRole used by GitHub Actions
+    Value: !GetAtt DocumensoDeployRole.Arn
