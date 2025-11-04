@@ -23,3 +23,19 @@ aws cloudformation deploy \
     SigningFileContentsParam="/prod/documenso/signing-file" \
     UploadBucket="prod-documenso-assets-624464340576"
 ```
+
+Documenso Bastion
+
+```
+ aws cloudformation deploy \
+  --template-file infrastructure/documenso-bastion.yaml \
+  --stack-name documenso-bastion \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides \
+    VpcId=vpc-08e002a2f1a7f1c37 \
+    PublicSubnetId=subnet-02e957d0a1540de72 \
+    BastionKeyName=vpc-temp \
+    AllowedCidr=50.218.89.150/32 \
+    RdsSecurityGroupId=sg-0d20d3c776884bd14 \
+    AmiId=ami-0bdd88bd06d16ba03
+```
