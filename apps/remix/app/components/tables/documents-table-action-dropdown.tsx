@@ -75,13 +75,23 @@ export const DocumentsTableActionDropdown = ({
 
   const documentsPath = formatDocumentsPath(team.url);
   const formatPath = `${documentsPath}/${row.envelopeId}/edit`;
+  const trpcRequestOptions = team
+    ? {
+        context: {
+          teamId: team.id.toString(),
+        },
+      }
+    : undefined;
 
   const onDownloadClick = async () => {
     try {
       const document = !recipient
-        ? await trpcClient.document.get.query({
-            documentId: row.id,
-          })
+        ? await trpcClient.document.get.query(
+            {
+              documentId: row.id,
+            },
+            trpcRequestOptions,
+          )
         : await trpcClient.document.getDocumentByToken.query({
             token: recipient.token,
           });
@@ -105,9 +115,12 @@ export const DocumentsTableActionDropdown = ({
   const onDownloadOriginalClick = async () => {
     try {
       const document = !recipient
-        ? await trpcClient.document.get.query({
-            documentId: row.id,
-          })
+        ? await trpcClient.document.get.query(
+            {
+              documentId: row.id,
+            },
+            trpcRequestOptions,
+          )
         : await trpcClient.document.getDocumentByToken.query({
             token: recipient.token,
           });
