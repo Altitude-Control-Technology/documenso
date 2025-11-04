@@ -127,14 +127,6 @@
           "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/nextauth-secret"
         },
         {
-          "name": "NEXT_PRIVATE_SMTP_USERNAME",
-          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-user"
-        },
-        {
-          "name": "NEXT_PRIVATE_SMTP_PASSWORD",
-          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-password"
-        },
-        {
           "name": "NEXT_PRIVATE_GOOGLE_CLIENT_ID",
           "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/google-client-id"
         },
@@ -160,19 +152,51 @@
         },
         {
           "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/pgsql"
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/database-url"
         },
         {
           "name": "DIRECT_URL",
-          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/pgsql"
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/direct-url"
         },
         {
           "name": "NEXT_PRIVATE_DATABASE_URL",
-          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/pgsql"
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/private-database-url"
         },
         {
           "name": "NEXT_PRIVATE_DIRECT_DATABASE_URL",
-          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/pgsql/direct"
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/private-direct-url"
+        },
+        {
+          "name": "NEXT_PRIVATE_SMTP_HOST",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-host"
+        },
+        {
+          "name": "NEXT_PRIVATE_SMTP_PORT",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-port"
+        },
+        {
+          "name": "NEXT_PRIVATE_SMTP_TRANSPORT",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-transport"
+        },
+        {
+          "name": "NEXT_PRIVATE_SMTP_FROM_ADDRESS",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-from-address"
+        },
+        {
+          "name": "NEXT_PRIVATE_SMTP_FROM_NAME",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-from-name"
+        },
+        {
+          "name": "NEXT_PRIVATE_SMTP_TLS",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-tls"
+        },
+        {
+          "name": "NEXT_PRIVATE_SMTP_USERNAME",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-user"
+        },
+        {
+          "name": "NEXT_PRIVATE_SMTP_PASSWORD",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/smtp-password"
         }
       ],
       "logConfiguration": {
