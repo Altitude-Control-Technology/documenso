@@ -85,24 +85,27 @@ export const DocumentsTableActionDropdown = ({
 
   const onDownloadClick = async () => {
     try {
-      const document = !recipient
-        ? await trpcClient.document.get.query(
-            {
-              documentId: row.id,
-            },
-            trpcRequestOptions,
-          )
-        : await trpcClient.document.getDocumentByToken.query({
-            token: recipient.token,
-          });
+      const envelopeItemsPayload = await trpcClient.envelope.item.getManyByToken.query(
+        {
+          envelopeId: row.envelopeId,
+          access: recipient?.token
+            ? { type: 'recipient', token: recipient.token }
+            : { type: 'user' },
+        },
+        trpcRequestOptions,
+      );
 
-      const documentData = document?.documentData;
+      const envelopeItem = envelopeItemsPayload?.data?.[0];
 
-      if (!documentData) {
+      if (!envelopeItem) {
         return;
       }
 
-      await downloadPDF({ documentData, fileName: row.title });
+      await downloadPDF({
+        envelopeItem,
+        token: recipient?.token,
+        fileName: envelopeItem.title ?? row.title,
+      });
     } catch (err) {
       toast({
         title: _(msg`Something went wrong`),
@@ -114,24 +117,28 @@ export const DocumentsTableActionDropdown = ({
 
   const onDownloadOriginalClick = async () => {
     try {
-      const document = !recipient
-        ? await trpcClient.document.get.query(
-            {
-              documentId: row.id,
-            },
-            trpcRequestOptions,
-          )
-        : await trpcClient.document.getDocumentByToken.query({
-            token: recipient.token,
-          });
+      const envelopeItemsPayload = await trpcClient.envelope.item.getManyByToken.query(
+        {
+          envelopeId: row.envelopeId,
+          access: recipient?.token
+            ? { type: 'recipient', token: recipient.token }
+            : { type: 'user' },
+        },
+        trpcRequestOptions,
+      );
 
-      const documentData = document?.documentData;
+      const envelopeItem = envelopeItemsPayload?.data?.[0];
 
-      if (!documentData) {
+      if (!envelopeItem) {
         return;
       }
 
-      await downloadPDF({ documentData, fileName: row.title, version: 'original' });
+      await downloadPDF({
+        envelopeItem,
+        token: recipient?.token,
+        fileName: envelopeItem.title ?? row.title,
+        version: 'original',
+      });
     } catch (err) {
       toast({
         title: _(msg`Something went wrong`),
@@ -146,7 +153,7 @@ export const DocumentsTableActionDropdown = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger data-testid="document-table-action-btn">
-        <MoreHorizontal className="text-muted-foreground h-5 w-5" />
+        <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent className="w-52" align="start" forceMount>
