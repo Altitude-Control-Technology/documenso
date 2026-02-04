@@ -1,0 +1,35 @@
+# .github/workflows/upstream-sync.yml
+name: Sync upstream changes
+on:
+  schedule:
+    - cron: '0 2 * * 1' # every Monday 2 AM UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Add upstream remote
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/documenso/documenso.git 2>/dev/null || \
+            git remote set-url upstream https://github.com/documenso/documenso.git
+          git fetch upstream
+      - name: Merge upstream
+        run: |
+          set -euo pipefail
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          git checkout -B "$DEFAULT_BRANCH" "origin/$DEFAULT_BRANCH"
+          git merge "upstream/$DEFAULT_BRANCH" --no-edit
+          git push origin "$DEFAULT_BRANCH"
