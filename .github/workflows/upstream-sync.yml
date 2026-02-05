@@ -8,6 +8,12 @@ on:
 permissions:
   contents: write
 
+env:
+  UPSTREAM_REPO: https://github.com/documenso/documenso.git
+  UPSTREAM_BRANCH: main
+  TARGET_BRANCH: main
+  REBASE_BRANCH: act-custom
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -23,13 +29,20 @@ jobs:
       - name: Add upstream remote
         run: |
           set -euo pipefail
-          git remote add upstream https://github.com/documenso/documenso.git 2>/dev/null || \
-            git remote set-url upstream https://github.com/documenso/documenso.git
+          git remote add upstream "${UPSTREAM_REPO}" 2>/dev/null || \
+            git remote set-url upstream "${UPSTREAM_REPO}"
           git fetch upstream
       - name: Merge upstream
         run: |
           set -euo pipefail
-          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
-          git checkout -B "$DEFAULT_BRANCH" "origin/$DEFAULT_BRANCH"
-          git merge "upstream/$DEFAULT_BRANCH" --no-edit
-          git push origin "$DEFAULT_BRANCH"
+          git fetch origin
+          git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+          git merge "upstream/$UPSTREAM_BRANCH" --no-edit
+          git push origin "$TARGET_BRANCH"
+      - name: Rebase custom branch
+        if: ${{ env.REBASE_BRANCH != '' }}
+        run: |
+          set -euo pipefail
+          git checkout -B "$REBASE_BRANCH" "origin/$REBASE_BRANCH"
+          git rebase "$TARGET_BRANCH"
+          git push origin "$REBASE_BRANCH" --force-with-lease

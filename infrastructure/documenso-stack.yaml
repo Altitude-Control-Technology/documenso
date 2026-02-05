@@ -612,8 +612,6 @@ Resources:
               Value: s3
             - Name: NEXT_PUBLIC_UPLOAD_TRANSPORT
               Value: s3
-            - Name: NEXT_PRIVATE_UPLOAD_BUCKET
-              Value: !Ref UploadBucket
             - Name: REMINDER_QUEUE_URL
               Value: !Ref ReminderQueue
             - Name: WEBHOOK_SECRET_SSM_PATH
