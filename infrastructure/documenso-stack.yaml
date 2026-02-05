@@ -471,7 +471,8 @@ Resources:
                 Action:
                   - ssm:GetParameters
                   - ssm:GetParameter
-                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/prod/documenso/*"
+                  - ssm:GetParametersByPath
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${EnvironmentName}/documenso/*"
               - !If
                 - UseSmtpUserParam
                 - Effect: Allow
