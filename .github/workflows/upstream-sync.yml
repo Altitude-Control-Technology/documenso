@@ -37,7 +37,28 @@ jobs:
           set -euo pipefail
           git fetch origin
           git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
-          git merge "upstream/$UPSTREAM_BRANCH" --no-edit
+          if ! git merge "upstream/$UPSTREAM_BRANCH" --no-edit; then
+            echo "Merge conflict detected. Attempting auto-resolution for translation catalogs."
+
+            mapfile -t conflicted_files < <(git diff --name-only --diff-filter=U)
+            if [ "${#conflicted_files[@]}" -eq 0 ]; then
+              echo "Merge failed but no conflicted files were detected."
+              exit 1
+            fi
+
+            for file in "${conflicted_files[@]}"; do
+              if [[ "$file" =~ ^packages/lib/translations/.+/web\.po$ ]]; then
+                # For generated translation catalogs, prefer upstream content.
+                git checkout --theirs "$file"
+                git add "$file"
+              else
+                echo "Unresolvable conflict in non-translation file: $file"
+                exit 1
+              fi
+            done
+
+            git commit --no-edit
+          fi
           git push origin "$TARGET_BRANCH"
       - name: Rebase custom branch
         if: ${{ env.REBASE_BRANCH != '' }}
