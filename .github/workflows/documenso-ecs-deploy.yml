@@ -45,16 +45,19 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Documenso container image
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Documenso image to ECR
         run: |
-          docker build \
+          docker buildx build \
+            --platform linux/amd64 \
+            --provenance=false \
+            --sbom=false \
             --file docker/Dockerfile \
             --tag ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
+            --push \
             .
-
-      - name: Push Documenso image to ECR
-        run: |
-          docker push ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
       - name: Update task definition image
         id: render-task
@@ -80,4 +83,4 @@ jobs:
             --query "services[0].deployments"
 
       - name: Notify deployment
-        run: echo "✅ Deployed Documenso ${{ env.IMAGE_TAG }} to ${{ github.event.inputs.environment || 'prod' }}"
+        run: echo "Deployed Documenso ${{ env.IMAGE_TAG }} to ${{ github.event.inputs.environment || 'prod' }}"
