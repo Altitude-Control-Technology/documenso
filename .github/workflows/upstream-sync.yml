@@ -65,5 +65,30 @@ jobs:
         run: |
           set -euo pipefail
           git checkout -B "$REBASE_BRANCH" "origin/$REBASE_BRANCH"
-          git rebase "$TARGET_BRANCH"
+          if ! git rebase "$TARGET_BRANCH"; then
+            echo "Rebase conflict detected. Attempting auto-resolution for translation catalogs."
+
+            while [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; do
+              mapfile -t conflicted_files < <(git diff --name-only --diff-filter=U)
+              if [ "${#conflicted_files[@]}" -eq 0 ]; then
+                echo "Rebase failed but no conflicted files were detected."
+                git rebase --abort
+                exit 1
+              fi
+
+              for file in "${conflicted_files[@]}"; do
+                if [[ "$file" =~ ^packages/lib/translations/.+/web\.po$ ]]; then
+                  # For generated translation catalogs, prefer target branch content.
+                  git checkout --theirs "$file"
+                  git add "$file"
+                else
+                  echo "Unresolvable conflict in non-translation file: $file"
+                  git rebase --abort
+                  exit 1
+                fi
+              done
+
+              git rebase --continue
+            done
+          fi
           git push origin "$REBASE_BRANCH" --force-with-lease
