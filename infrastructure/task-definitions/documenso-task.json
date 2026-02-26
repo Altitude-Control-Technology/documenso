@@ -113,6 +113,10 @@
           "value": "true"
         },
         {
+          "name": "GOOGLE_VERTEX_LOCATION",
+          "value": "us-central1"
+        },
+        {
           "name": "NEXT_PRIVATE_SIGNING_TRANSPORT",
           "value": "local"
         },
@@ -133,6 +137,14 @@
         {
           "name": "NEXT_PRIVATE_GOOGLE_CLIENT_SECRET",
           "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/google-client-secret"
+        },
+        {
+          "name": "GOOGLE_VERTEX_PROJECT_ID",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/google-vertex-project-id"
+        },
+        {
+          "name": "GOOGLE_VERTEX_API_KEY",
+          "valueFrom": "arn:aws:ssm:us-east-1:624464340576:parameter/prod/documenso/google-vertex-api-key"
         },
         {
           "name": "NEXT_PRIVATE_ENCRYPTION_KEY",
