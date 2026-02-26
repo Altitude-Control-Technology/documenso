@@ -128,6 +128,18 @@ Parameters:
     Type: String
     Default: ""
     Description: SSM parameter path containing the Google OAuth client secret (SecureString recommended).
+  GoogleVertexProjectIdParam:
+    Type: String
+    Default: ""
+    Description: SSM parameter path containing the Google Vertex AI project ID.
+  GoogleVertexApiKeyParam:
+    Type: String
+    Default: ""
+    Description: SSM parameter path containing the Google Vertex AI API key (SecureString recommended).
+  GoogleVertexLocation:
+    Type: String
+    Default: ""
+    Description: Optional Google Vertex AI location (for example us-central1).
 
   EncryptionKeyParam:
     Type: String
@@ -178,6 +190,9 @@ Conditions:
   UseSmtpPasswordParam: !Not [!Equals [!Ref SmtpPasswordParam, ""]]
   UseGoogleClientIdParam: !Not [!Equals [!Ref GoogleClientIdParam, ""]]
   UseGoogleClientSecretParam: !Not [!Equals [!Ref GoogleClientSecretParam, ""]]
+  UseGoogleVertexProjectIdParam: !Not [!Equals [!Ref GoogleVertexProjectIdParam, ""]]
+  UseGoogleVertexApiKeyParam: !Not [!Equals [!Ref GoogleVertexApiKeyParam, ""]]
+  UseGoogleVertexLocation: !Not [!Equals [!Ref GoogleVertexLocation, ""]]
   UseEncryptionKeyParam: !Not [!Equals [!Ref EncryptionKeyParam, ""]]
   UseEncryptionSecondaryKeyParam: !Not [!Equals [!Ref EncryptionSecondaryKeyParam, ""]]
   UseSigningPassphraseParam: !Not [!Equals [!Ref SigningPassphraseParam, ""]]
@@ -537,6 +552,22 @@ Resources:
                     - ssm:GetParameter
                   Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GoogleClientIdParam}"
                 - !Ref AWS::NoValue
+              - !If
+                - UseGoogleVertexProjectIdParam
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameters
+                    - ssm:GetParameter
+                  Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GoogleVertexProjectIdParam}"
+                - !Ref AWS::NoValue
+              - !If
+                - UseGoogleVertexApiKeyParam
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameters
+                    - ssm:GetParameter
+                  Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GoogleVertexApiKeyParam}"
+                - !Ref AWS::NoValue
 
   DocumensoTaskRole:
     Type: AWS::IAM::Role
@@ -672,6 +703,11 @@ Resources:
                 Value: !Ref SmtpTls
               - !Ref AWS::NoValue
             - !If
+              - UseGoogleVertexLocation
+              - Name: GOOGLE_VERTEX_LOCATION
+                Value: !Ref GoogleVertexLocation
+              - !Ref AWS::NoValue
+            - !If
               - UseUploadBucket
               - Name: NEXT_PRIVATE_UPLOAD_BUCKET
                 Value: !Ref UploadBucket
@@ -706,6 +742,16 @@ Resources:
               - UseGoogleClientSecretParam
               - Name: NEXT_PRIVATE_GOOGLE_CLIENT_SECRET
                 ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GoogleClientSecretParam}"
+              - !Ref AWS::NoValue
+            - !If
+              - UseGoogleVertexProjectIdParam
+              - Name: GOOGLE_VERTEX_PROJECT_ID
+                ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GoogleVertexProjectIdParam}"
+              - !Ref AWS::NoValue
+            - !If
+              - UseGoogleVertexApiKeyParam
+              - Name: GOOGLE_VERTEX_API_KEY
+                ValueFrom: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GoogleVertexApiKeyParam}"
               - !Ref AWS::NoValue
             - !If
               - UseEncryptionKeyParam
