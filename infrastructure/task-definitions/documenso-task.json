@@ -114,7 +114,7 @@
         },
         {
           "name": "GOOGLE_VERTEX_LOCATION",
-          "value": "us-central1"
+          "value": "global"
         },
         {
           "name": "NEXT_PRIVATE_SIGNING_TRANSPORT",
