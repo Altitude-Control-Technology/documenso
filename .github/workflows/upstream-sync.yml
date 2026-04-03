@@ -22,6 +22,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+          ref: act-custom
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
@@ -32,34 +33,12 @@ jobs:
           git remote add upstream "${UPSTREAM_REPO}" 2>/dev/null || \
             git remote set-url upstream "${UPSTREAM_REPO}"
           git fetch upstream
-      - name: Merge upstream
+          git fetch origin
+      - name: Reset main to upstream
         run: |
           set -euo pipefail
-          git fetch origin
-          git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
-          if ! git merge "upstream/$UPSTREAM_BRANCH" --no-edit; then
-            echo "Merge conflict detected. Attempting auto-resolution for translation catalogs."
-
-            mapfile -t conflicted_files < <(git diff --name-only --diff-filter=U)
-            if [ "${#conflicted_files[@]}" -eq 0 ]; then
-              echo "Merge failed but no conflicted files were detected."
-              exit 1
-            fi
-
-            for file in "${conflicted_files[@]}"; do
-              if [[ "$file" =~ ^packages/lib/translations/.+/web\.po$ ]]; then
-                # For generated translation catalogs, prefer upstream content.
-                git checkout --theirs "$file"
-                git add "$file"
-              else
-                echo "Unresolvable conflict in non-translation file: $file"
-                exit 1
-              fi
-            done
-
-            git commit --no-edit
-          fi
-          git push origin "$TARGET_BRANCH"
+          git checkout -B "$TARGET_BRANCH" "upstream/$UPSTREAM_BRANCH"
+          git push origin "$TARGET_BRANCH" --force
       - name: Rebase custom branch
         if: ${{ env.REBASE_BRANCH != '' }}
         run: |
@@ -76,19 +55,23 @@ jobs:
                 exit 1
               fi
 
+              all_resolvable=true
               for file in "${conflicted_files[@]}"; do
                 if [[ "$file" =~ ^packages/lib/translations/.+/web\.po$ ]]; then
-                  # For generated translation catalogs, prefer target branch content.
                   git checkout --theirs "$file"
                   git add "$file"
                 else
                   echo "Unresolvable conflict in non-translation file: $file"
-                  git rebase --abort
-                  exit 1
+                  all_resolvable=false
                 fi
               done
 
-              git rebase --continue
+              if [ "$all_resolvable" = false ]; then
+                git rebase --abort
+                exit 1
+              fi
+
+              GIT_EDITOR=true git rebase --continue || true
             done
           fi
           git push origin "$REBASE_BRANCH" --force-with-lease
