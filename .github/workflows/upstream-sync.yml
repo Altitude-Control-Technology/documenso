@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  workflows: write
 
 env:
   UPSTREAM_REPO: https://github.com/documenso/documenso.git
