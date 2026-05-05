@@ -40,39 +40,37 @@ jobs:
           set -euo pipefail
           git checkout -B "$TARGET_BRANCH" "upstream/$UPSTREAM_BRANCH"
           git push origin "$TARGET_BRANCH" --force
-      - name: Rebase custom branch
+      - name: Merge upstream into custom branch
         if: ${{ env.REBASE_BRANCH != '' }}
         run: |
           set -euo pipefail
           git checkout -B "$REBASE_BRANCH" "origin/$REBASE_BRANCH"
-          if ! git rebase "$TARGET_BRANCH"; then
-            echo "Rebase conflict detected. Attempting auto-resolution for translation catalogs."
+          # Merge (not rebase): act-custom already contains previous upstream
+          # merge commits, so a rebase would replay those old upstream commits
+          # onto the new upstream/main and produce add/add conflicts on files
+          # that already exist there. Merging uses the previous upstream merge
+          # as the merge-base, limiting conflicts to genuinely new changes.
+          if ! git merge "upstream/$UPSTREAM_BRANCH" --no-edit; then
+            echo "Merge conflict detected. Attempting auto-resolution for translation catalogs."
 
-            while [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; do
-              mapfile -t conflicted_files < <(git diff --name-only --diff-filter=U)
-              if [ "${#conflicted_files[@]}" -eq 0 ]; then
-                echo "Rebase failed but no conflicted files were detected."
-                git rebase --abort
+            mapfile -t conflicted_files < <(git diff --name-only --diff-filter=U)
+            if [ "${#conflicted_files[@]}" -eq 0 ]; then
+              echo "Merge failed but no conflicted files were detected."
+              git merge --abort
+              exit 1
+            fi
+
+            for file in "${conflicted_files[@]}"; do
+              if [[ "$file" =~ ^packages/lib/translations/.+/web\.po$ ]]; then
+                git checkout --theirs "$file"
+                git add "$file"
+              else
+                echo "Unresolvable conflict in non-translation file: $file"
+                git merge --abort
                 exit 1
               fi
-
-              all_resolvable=true
-              for file in "${conflicted_files[@]}"; do
-                if [[ "$file" =~ ^packages/lib/translations/.+/web\.po$ ]]; then
-                  git checkout --theirs "$file"
-                  git add "$file"
-                else
-                  echo "Unresolvable conflict in non-translation file: $file"
-                  all_resolvable=false
-                fi
-              done
-
-              if [ "$all_resolvable" = false ]; then
-                git rebase --abort
-                exit 1
-              fi
-
-              GIT_EDITOR=true git rebase --continue || true
             done
+
+            git commit --no-edit
           fi
-          git push origin "$REBASE_BRANCH" --force-with-lease
+          git push origin "$REBASE_BRANCH"
