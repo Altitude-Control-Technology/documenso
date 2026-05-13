@@ -40,6 +40,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Register the `ours` merge driver so .gitattributes entries that mark
+          # stubbed workflow files with `merge=ours` actually take effect. Without
+          # this registration the driver name is unknown and git falls back to
+          # default text merging, which would re-introduce upstream's content.
+          git config merge.ours.driver true
 
       - name: Add upstream remote
         run: |
@@ -91,36 +96,29 @@ jobs:
           done
 
           if [ "${#unresolved[@]}" -eq 0 ]; then
-            # All conflicts were translations; auto-resolved.
             git commit --no-edit
             echo "status=clean" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # Real conflicts exist. Re-introduce conflict markers on the unresolved
-          # files (translation .po files stay auto-resolved) and write the list
-          # to a file for the PR body. Commit the half-merged state so it can be
-          # pushed as a PR branch.
           printf '%s\n' "${unresolved[@]}" > /tmp/sync-unresolved.txt
           echo "status=conflict" >> "$GITHUB_OUTPUT"
           echo "Unresolved conflicts in:"
           printf '  - %s\n' "${unresolved[@]}"
 
-          # Restage with conflict markers so reviewers can see them in the PR.
-          # We need a real commit to push, so we commit with -F using the merge
-          # message and force-include the conflicted files. Git's `commit -a`
-          # refuses while files are in unmerged state, so add them explicitly.
+          # Stage the conflicted files (still containing conflict markers) and
+          # commit so they can be pushed as a PR branch for human review.
           for file in "${unresolved[@]}"; do
             git add "$file"
           done
-          # `git add` on a conflicted file stages the working-tree content
-          # (which still contains conflict markers), so the commit will include
-          # the markers verbatim.
-          git commit -m "WIP: merge upstream/main into act-custom (conflicts pending review)
 
-Unresolved conflicts:
-$(printf -- '- %s\n' "${unresolved[@]}")
-"
+          {
+            echo "WIP: merge upstream/main into act-custom (conflicts pending review)"
+            echo
+            echo "Unresolved conflicts:"
+            printf -- '- %s\n' "${unresolved[@]}"
+          } > /tmp/sync-commit-msg.txt
+          git commit -F /tmp/sync-commit-msg.txt
 
       - name: Push clean merge to act-custom
         if: steps.merge.outputs.status == 'clean'
@@ -139,45 +137,44 @@ $(printf -- '- %s\n' "${unresolved[@]}")
           git checkout -B "$SYNC_BRANCH"
           git push origin "$SYNC_BRANCH" --force-with-lease
 
-          UNRESOLVED_LIST=$(sed 's/^/- /' /tmp/sync-unresolved.txt)
+          {
+            echo "Automated weekly sync of \`upstream/main\` into \`act-custom\`."
+            echo
+            echo "**Translation \`.po\` conflicts were auto-resolved (took upstream).**"
+            echo
+            echo "**The following non-translation files have conflict markers that need human resolution:**"
+            echo
+            sed 's/^/- /' /tmp/sync-unresolved.txt
+            echo
+            echo "## How to resolve"
+            echo
+            echo "1. Check out this branch locally:"
+            echo '   ```'
+            echo "   git fetch origin"
+            echo "   git checkout $SYNC_BRANCH"
+            echo '   ```'
+            echo "2. Resolve each file's conflict markers (\`<<<<<<<\`, \`=======\`, \`>>>>>>>\`)."
+            echo "3. \`git add\` the resolved files, amend the commit, and push:"
+            echo '   ```'
+            echo "   git commit --amend --no-edit"
+            echo "   git push origin $SYNC_BRANCH --force-with-lease"
+            echo '   ```'
+            echo "4. Merge this PR into \`act-custom\` (use **Merge commit**, not squash, to preserve upstream history)."
+            echo
+            echo "## Things to double-check for act-sizing impact"
+            echo
+            echo "- **\`/api/v2/envelope/*\` endpoints** (create/distribute/delete/GET) — signature changes will break act-sizing's Documenso integration in \`backend/lambda-db/projects_handler.py\`."
+            echo "- **Webhook payload shape** (\`{event, payload, createdAt, webhookEndpoint}\` with \`payload.id\` and \`payload.externalId\`)."
+            echo "- **PDF placeholder extraction** in \`packages/lib/server-only/pdf/auto-place-fields.ts\` — our \`{{signature, r1}}\` style placeholders depend on the regex \`/\\\\{\\\\{([^}]+)\\\\}\\\\}/g\`."
+            echo "- **\`@documenso/embed-react\` package** — we use \`EmbedSignDocument\` for in-person signing."
+          } > /tmp/sync-pr-body.md
 
-          # Create or update PR. If a sync PR for today already exists, skip.
           if gh pr list --head "$SYNC_BRANCH" --json number --jq 'length' | grep -q '^0$'; then
             gh pr create \
               --base "$REBASE_BRANCH" \
               --head "$SYNC_BRANCH" \
               --title "Weekly upstream sync ($DATE) — conflicts need review" \
-              --body "$(cat <<EOF
-Automated weekly sync of \`upstream/main\` into \`act-custom\`.
-
-**Translation \`.po\` conflicts were auto-resolved (took upstream).**
-
-**The following non-translation files have conflict markers that need human resolution:**
-
-$UNRESOLVED_LIST
-
-## How to resolve
-
-1. Check out this branch locally:
-   \`\`\`
-   git fetch origin
-   git checkout $SYNC_BRANCH
-   \`\`\`
-2. Resolve each file's conflict markers (\`<<<<<<<\`, \`=======\`, \`>>>>>>>\`).
-3. \`git add\` the resolved files, amend the commit (\`git commit --amend --no-edit\`), and push:
-   \`\`\`
-   git push origin $SYNC_BRANCH --force-with-lease
-   \`\`\`
-4. Merge this PR into \`act-custom\` (use **Merge commit**, not squash, to preserve upstream history).
-
-## Things to double-check for act-sizing impact
-
-- **\`/api/v2/envelope/*\` endpoints** (create/distribute/delete/GET) — signature changes will break act-sizing's Documenso integration in \`backend/lambda-db/projects_handler.py\`.
-- **Webhook payload shape** (\`{event, payload, createdAt, webhookEndpoint}\` with \`payload.id\` and \`payload.externalId\`).
-- **PDF placeholder extraction** in \`packages/lib/server-only/pdf/auto-place-fields.ts\` — our \`{{signature, r1}}\` style placeholders depend on the regex \`/\\\\{\\\\{([^}]+)\\\\}\\\\}/g\`.
-- **\`@documenso/embed-react\` package** — we use \`EmbedSignDocument\` for in-person signing.
-EOF
-)"
+              --body-file /tmp/sync-pr-body.md
           else
             echo "PR for $SYNC_BRANCH already exists; updated branch in place."
           fi

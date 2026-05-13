@@ -1,29 +1,12 @@
-name: 'Welcome New Contributors'
-
+# Disabled in this fork.
+# Upstream's version of this workflow is irrelevant to Altitude-Control-Technology/documenso
+# (issue management / translations / community automation / upstream-only deploy).
+# Future upstream changes to this file are auto-resolved via merge=ours in .gitattributes.
+name: Disabled
 on:
-  pull_request:
-    types: ['opened']
-  issues:
-    types: ['opened']
-
-permissions:
-  pull-requests: write
-  issues: write
-
+  workflow_dispatch:
 jobs:
-  welcome-message:
-    name: Welcome Contributors
-    if: github.event.action == 'opened'
+  noop:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - uses: actions/first-interaction@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          pr-message: |
-            Thank you for creating your first Pull Request and for being a part of the open signing revolution! 💚🚀
-            <br /> Feel free to hop into our community in [Discord](https://documen.so/discord)
-          issue-message: |
-            Thank you for opening your first issue and for being a part of the open signing revolution!
-            <br /> One of our team members will review it and get back to you as soon as it possible 💚
-            <br /> Meanwhile, please feel free to hop into our community in [Discord](https://documen.so/discord)
+      - run: echo "This workflow is disabled in the fork."

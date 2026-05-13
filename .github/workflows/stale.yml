@@ -1,24 +1,12 @@
-name: 'Mark Stale Issues and PRs'
-
+# Disabled in this fork.
+# Upstream's version of this workflow is irrelevant to Altitude-Control-Technology/documenso
+# (issue management / translations / community automation / upstream-only deploy).
+# Future upstream changes to this file are auto-resolved via merge=ours in .gitattributes.
+name: Disabled
 on:
-  schedule:
-    - cron: '0 */8 * * *'
-
+  workflow_dispatch:
 jobs:
-  stale:
+  noop:
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      pull-requests: write
-
     steps:
-      - uses: actions/stale@v5
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          days-before-pr-stale: 90
-          days-before-issue-stale: 90
-          days-before-issue-close: 180
-          stale-pr-message: 'This PR has not seen activitiy for a while. It will be closed in 30 days unless further activity is detected.'
-          close-pr-message: 'This PR has been closed because of inactivity.'
-          exempt-pr-labels: 'WIP,on-hold,needs review'
-          exempt-issue-labels: 'WIP,on-hold,needs review,roadmap,assigned,needs triage'
+      - run: echo "This workflow is disabled in the fork."
