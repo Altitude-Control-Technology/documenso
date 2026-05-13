@@ -1,5 +1,15 @@
 # .github/workflows/upstream-sync.yml
-# Requires a PAT with repo + workflow scopes stored as SYNC_PAT secret.
+# Requires a PAT with repo + workflow + pull-requests scopes stored as SYNC_PAT secret.
+#
+# Weekly sync of upstream documenso/documenso into our fork.
+#
+# Behavior:
+#   - main always force-resets to upstream/main (mirror branch)
+#   - act-custom gets upstream/main merged in:
+#       * clean merge or only .po conflicts -> auto-resolve and push directly
+#       * real conflicts -> push to sync/upstream-<date> and open a PR with
+#         conflict markers for human review. The PR description lists the
+#         conflicted files so the reviewer knows exactly what to fix.
 name: Sync upstream changes
 on:
   schedule:
@@ -8,6 +18,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 env:
   UPSTREAM_REPO: https://github.com/documenso/documenso.git
@@ -24,10 +35,12 @@ jobs:
           token: ${{ secrets.SYNC_PAT }}
           fetch-depth: 0
           ref: act-custom
+
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Add upstream remote
         run: |
           set -euo pipefail
@@ -35,42 +48,136 @@ jobs:
             git remote set-url upstream "${UPSTREAM_REPO}"
           git fetch upstream
           git fetch origin
+
       - name: Reset main to upstream
         run: |
           set -euo pipefail
           git checkout -B "$TARGET_BRANCH" "upstream/$UPSTREAM_BRANCH"
           git push origin "$TARGET_BRANCH" --force
-      - name: Merge upstream into custom branch
-        if: ${{ env.REBASE_BRANCH != '' }}
+
+      - name: Merge upstream into act-custom
+        id: merge
         run: |
           set -euo pipefail
           git checkout -B "$REBASE_BRANCH" "origin/$REBASE_BRANCH"
+
           # Merge (not rebase): act-custom already contains previous upstream
           # merge commits, so a rebase would replay those old upstream commits
           # onto the new upstream/main and produce add/add conflicts on files
-          # that already exist there. Merging uses the previous upstream merge
-          # as the merge-base, limiting conflicts to genuinely new changes.
-          if ! git merge "upstream/$UPSTREAM_BRANCH" --no-edit; then
-            echo "Merge conflict detected. Attempting auto-resolution for translation catalogs."
-
-            mapfile -t conflicted_files < <(git diff --name-only --diff-filter=U)
-            if [ "${#conflicted_files[@]}" -eq 0 ]; then
-              echo "Merge failed but no conflicted files were detected."
-              git merge --abort
-              exit 1
-            fi
-
-            for file in "${conflicted_files[@]}"; do
-              if [[ "$file" =~ ^packages/lib/translations/.+/web\.po$ ]]; then
-                git checkout --theirs "$file"
-                git add "$file"
-              else
-                echo "Unresolvable conflict in non-translation file: $file"
-                git merge --abort
-                exit 1
-              fi
-            done
-
-            git commit --no-edit
+          # that already exist there.
+          if git merge "upstream/$UPSTREAM_BRANCH" --no-edit; then
+            echo "status=clean" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          echo "Merge conflict detected. Attempting auto-resolution for translation catalogs."
+          mapfile -t conflicted_files < <(git diff --name-only --diff-filter=U)
+
+          if [ "${#conflicted_files[@]}" -eq 0 ]; then
+            echo "Merge failed but no conflicted files detected."
+            git merge --abort
+            echo "status=error" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          unresolved=()
+          for file in "${conflicted_files[@]}"; do
+            if [[ "$file" =~ ^packages/lib/translations/.+/web\.po$ ]]; then
+              git checkout --theirs "$file"
+              git add "$file"
+            else
+              unresolved+=("$file")
+            fi
+          done
+
+          if [ "${#unresolved[@]}" -eq 0 ]; then
+            # All conflicts were translations; auto-resolved.
+            git commit --no-edit
+            echo "status=clean" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Real conflicts exist. Re-introduce conflict markers on the unresolved
+          # files (translation .po files stay auto-resolved) and write the list
+          # to a file for the PR body. Commit the half-merged state so it can be
+          # pushed as a PR branch.
+          printf '%s\n' "${unresolved[@]}" > /tmp/sync-unresolved.txt
+          echo "status=conflict" >> "$GITHUB_OUTPUT"
+          echo "Unresolved conflicts in:"
+          printf '  - %s\n' "${unresolved[@]}"
+
+          # Restage with conflict markers so reviewers can see them in the PR.
+          # We need a real commit to push, so we commit with -F using the merge
+          # message and force-include the conflicted files. Git's `commit -a`
+          # refuses while files are in unmerged state, so add them explicitly.
+          for file in "${unresolved[@]}"; do
+            git add "$file"
+          done
+          # `git add` on a conflicted file stages the working-tree content
+          # (which still contains conflict markers), so the commit will include
+          # the markers verbatim.
+          git commit -m "WIP: merge upstream/main into act-custom (conflicts pending review)
+
+Unresolved conflicts:
+$(printf -- '- %s\n' "${unresolved[@]}")
+"
+
+      - name: Push clean merge to act-custom
+        if: steps.merge.outputs.status == 'clean'
+        run: |
+          set -euo pipefail
           git push origin "$REBASE_BRANCH"
+
+      - name: Push conflict branch and open PR
+        if: steps.merge.outputs.status == 'conflict'
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_PAT }}
+        run: |
+          set -euo pipefail
+          DATE=$(date -u +%Y-%m-%d)
+          SYNC_BRANCH="sync/upstream-${DATE}"
+          git checkout -B "$SYNC_BRANCH"
+          git push origin "$SYNC_BRANCH" --force-with-lease
+
+          UNRESOLVED_LIST=$(sed 's/^/- /' /tmp/sync-unresolved.txt)
+
+          # Create or update PR. If a sync PR for today already exists, skip.
+          if gh pr list --head "$SYNC_BRANCH" --json number --jq 'length' | grep -q '^0$'; then
+            gh pr create \
+              --base "$REBASE_BRANCH" \
+              --head "$SYNC_BRANCH" \
+              --title "Weekly upstream sync ($DATE) — conflicts need review" \
+              --body "$(cat <<EOF
+Automated weekly sync of \`upstream/main\` into \`act-custom\`.
+
+**Translation \`.po\` conflicts were auto-resolved (took upstream).**
+
+**The following non-translation files have conflict markers that need human resolution:**
+
+$UNRESOLVED_LIST
+
+## How to resolve
+
+1. Check out this branch locally:
+   \`\`\`
+   git fetch origin
+   git checkout $SYNC_BRANCH
+   \`\`\`
+2. Resolve each file's conflict markers (\`<<<<<<<\`, \`=======\`, \`>>>>>>>\`).
+3. \`git add\` the resolved files, amend the commit (\`git commit --amend --no-edit\`), and push:
+   \`\`\`
+   git push origin $SYNC_BRANCH --force-with-lease
+   \`\`\`
+4. Merge this PR into \`act-custom\` (use **Merge commit**, not squash, to preserve upstream history).
+
+## Things to double-check for act-sizing impact
+
+- **\`/api/v2/envelope/*\` endpoints** (create/distribute/delete/GET) — signature changes will break act-sizing's Documenso integration in \`backend/lambda-db/projects_handler.py\`.
+- **Webhook payload shape** (\`{event, payload, createdAt, webhookEndpoint}\` with \`payload.id\` and \`payload.externalId\`).
+- **PDF placeholder extraction** in \`packages/lib/server-only/pdf/auto-place-fields.ts\` — our \`{{signature, r1}}\` style placeholders depend on the regex \`/\\\\{\\\\{([^}]+)\\\\}\\\\}/g\`.
+- **\`@documenso/embed-react\` package** — we use \`EmbedSignDocument\` for in-person signing.
+EOF
+)"
+          else
+            echo "PR for $SYNC_BRANCH already exists; updated branch in place."
+          fi
