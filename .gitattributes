@@ -1,0 +1,16 @@
+# Workflow files stubbed in this fork (see .github/workflows/*). The `ours` merge
+# driver keeps our stub when upstream modifies these files. The driver is
+# registered in .github/workflows/upstream-sync.yml before the merge step runs.
+.github/workflows/stale.yml merge=ours
+.github/workflows/translations-force-pull.yml merge=ours
+.github/workflows/translations-pull.yml merge=ours
+.github/workflows/translations-upload.yml merge=ours
+.github/workflows/first-interaction.yml merge=ours
+.github/workflows/issue-assignee-check.yml merge=ours
+.github/workflows/issue-labeler.yml merge=ours
+.github/workflows/issue-opened.yml merge=ours
+.github/workflows/pr-labeler.yml merge=ours
+.github/workflows/pr-review-reminder.yml merge=ours
+.github/workflows/semantic-pull-requests.yml merge=ours
+.github/workflows/publish.yml merge=ours
+.github/workflows/deploy.yml merge=ours

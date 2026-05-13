@@ -1,0 +1,197 @@
+# .github/workflows/weekly-claude-review.yml
+#
+# Runs after the weekly upstream-sync workflow completes. Computes the diff of
+# what upstream actually brought in this week, asks Claude to summarize and flag
+# anything that could affect act-sizing's Documenso integration, then opens (or
+# updates) a GitHub issue with the result.
+#
+# Requires secret: ANTHROPIC_API_KEY
+#
+# Skipped silently if the secret is not set so the workflow doesn't fail loudly
+# during initial setup.
+name: Weekly Claude upstream review
+on:
+  workflow_run:
+    workflows: ['Sync upstream changes']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  review:
+    # Run on success OR on workflow_dispatch. Skip if the parent sync failed —
+    # the conflict-PR opened by upstream-sync already serves as the review surface.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip if no API key
+        id: gate
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "ANTHROPIC_API_KEY not set; skipping review."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.skip != 'true'
+        with:
+          fetch-depth: 0
+          ref: act-custom
+
+      - name: Identify this week's upstream merge commit
+        id: merge
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          # The upstream-sync workflow merges upstream/main into act-custom. The
+          # most recent merge commit on act-custom whose second parent is on
+          # upstream/main is "this week's sync".
+          git remote add upstream https://github.com/documenso/documenso.git 2>/dev/null || true
+          git fetch upstream main --quiet
+          # Walk merge commits newest-first, find the first whose second parent is
+          # an ancestor of upstream/main.
+          MERGE_SHA=""
+          for sha in $(git log act-custom --merges --max-count=20 --format=%H); do
+            parents=$(git rev-list --parents -n 1 "$sha" | awk '{print $3}')
+            if [ -n "$parents" ] && git merge-base --is-ancestor "$parents" upstream/main 2>/dev/null; then
+              MERGE_SHA="$sha"
+              break
+            fi
+          done
+          if [ -z "$MERGE_SHA" ]; then
+            echo "No upstream merge commit found in last 20 merges; nothing to review."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          PARENT1=$(git rev-list --parents -n 1 "$MERGE_SHA" | awk '{print $2}')
+          PARENT2=$(git rev-list --parents -n 1 "$MERGE_SHA" | awk '{print $3}')
+          echo "merge_sha=$MERGE_SHA" >> "$GITHUB_OUTPUT"
+          echo "parent1=$PARENT1" >> "$GITHUB_OUTPUT"
+          echo "parent2=$PARENT2" >> "$GITHUB_OUTPUT"
+          echo "Found merge: $MERGE_SHA (act-custom parent: $PARENT1, upstream parent: $PARENT2)"
+
+      - name: Build review payload
+        id: payload
+        if: steps.gate.outputs.skip != 'true' && steps.merge.outputs.skip != 'true'
+        env:
+          MERGE_SHA: ${{ steps.merge.outputs.merge_sha }}
+          PARENT1: ${{ steps.merge.outputs.parent1 }}
+          PARENT2: ${{ steps.merge.outputs.parent2 }}
+        run: |
+          set -euo pipefail
+          OUT=/tmp/payload.txt
+
+          {
+            echo "=== UPSTREAM COMMITS MERGED THIS SYNC ==="
+            git log --oneline "$PARENT1..$PARENT2"
+            echo
+            echo "=== DIFF STAT ==="
+            git diff --stat "$PARENT1" "$PARENT2" | tail -200
+            echo
+            echo "=== INTEGRATION-RELEVANT DIFFS ==="
+            echo "(Only paths that touch the act-sizing Documenso integration surface."
+            echo "Anything outside these paths cannot directly break the integration.)"
+            echo
+            for path in \
+              packages/trpc/server/envelope-router \
+              packages/lib/types/webhook-payload.ts \
+              packages/lib/server-only/pdf/auto-place-fields.ts \
+              packages/lib/server-only/webhooks \
+              packages/embed \
+              apps/remix/app/routes/_recipient+ \
+              packages/api/v1/openapi.ts \
+              packages/trpc/server/webhook-router; do
+              if git diff --quiet "$PARENT1" "$PARENT2" -- "$path" 2>/dev/null; then
+                continue
+              fi
+              echo "--- $path ---"
+              git diff "$PARENT1" "$PARENT2" -- "$path" | head -400
+              echo
+            done
+          } > "$OUT"
+
+          # Truncate to ~120K chars (~30K tokens) to fit comfortably in context.
+          if [ "$(wc -c < "$OUT")" -gt 120000 ]; then
+            head -c 120000 "$OUT" > "$OUT.trunc"
+            echo "" >> "$OUT.trunc"
+            echo "[...truncated for size...]" >> "$OUT.trunc"
+            mv "$OUT.trunc" "$OUT"
+          fi
+
+          echo "payload_bytes=$(wc -c < "$OUT")" >> "$GITHUB_OUTPUT"
+
+      - name: Call Claude for review
+        id: claude
+        if: steps.gate.outputs.skip != 'true' && steps.merge.outputs.skip != 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+          PAYLOAD=$(cat /tmp/payload.txt)
+          SYSTEM_PROMPT=$(cat .github/scripts/upstream-review-system-prompt.md)
+
+          jq -n \
+            --arg model "claude-opus-4-7" \
+            --arg system "$SYSTEM_PROMPT" \
+            --arg user "$PAYLOAD" \
+            '{
+              model: $model,
+              max_tokens: 2000,
+              system: $system,
+              messages: [{role: "user", content: $user}]
+            }' > /tmp/request.json
+
+          curl -sS https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d @/tmp/request.json > /tmp/response.json
+
+          # Extract text content; if API errored, surface the error in the issue.
+          if jq -e '.content[0].text' /tmp/response.json > /dev/null 2>&1; then
+            jq -r '.content[0].text' /tmp/response.json > /tmp/review.md
+          else
+            {
+              echo "**Claude API call failed.** Raw response:"
+              echo
+              echo '```json'
+              cat /tmp/response.json
+              echo '```'
+            } > /tmp/review.md
+          fi
+
+          echo "review_bytes=$(wc -c < /tmp/review.md)" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update review issue
+        if: steps.gate.outputs.skip != 'true' && steps.merge.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_SHA: ${{ steps.merge.outputs.merge_sha }}
+        run: |
+          set -euo pipefail
+          DATE=$(date -u +%Y-%m-%d)
+          TITLE="Upstream review $DATE — merge $(echo "$MERGE_SHA" | cut -c1-8)"
+
+          {
+            echo "_Automated review of the upstream merge in commit \`$MERGE_SHA\`._"
+            echo
+            cat /tmp/review.md
+            echo
+            echo "---"
+            echo "Compare diff: https://github.com/${{ github.repository }}/compare/${{ steps.merge.outputs.parent1 }}...${{ steps.merge.outputs.parent2 }}"
+          } > /tmp/issue-body.md
+
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "$TITLE" \
+            --body-file /tmp/issue-body.md \
+            --label "upstream-sync"

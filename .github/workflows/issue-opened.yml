@@ -1,21 +1,12 @@
-name: 'Label Issues'
-
+# Disabled in this fork.
+# Upstream's version of this workflow is irrelevant to Altitude-Control-Technology/documenso
+# (issue management / translations / community automation / upstream-only deploy).
+# Future upstream changes to this file are auto-resolved via merge=ours in .gitattributes.
+name: Disabled
 on:
-  issues:
-    types: ['opened', 'reopened']
-
+  workflow_dispatch:
 jobs:
-  label_issues:
+  noop:
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
     steps:
-      - uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.addLabels({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ["status: triage"]
-            })
+      - run: echo "This workflow is disabled in the fork."
