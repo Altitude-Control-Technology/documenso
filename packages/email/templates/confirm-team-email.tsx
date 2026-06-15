@@ -2,6 +2,7 @@ import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
 import { Trans } from '@lingui/react/macro';
 
+<<<<<<< HEAD
 import { formatTeamUrl } from '@documenso/lib/utils/teams';
 
 import {
@@ -18,6 +19,10 @@ import {
   Text,
 } from '../components';
 import { useBranding } from '../providers/branding';
+=======
+import { Body, Button, Container, Head, Hr, Html, Link, Preview, Section, Text } from '../components';
+import { TemplateBrandingLogo } from '../template-components/template-branding-logo';
+>>>>>>> upstream/main
 import { TemplateFooter } from '../template-components/template-footer';
 import TemplateImage from '../template-components/template-image';
 
@@ -37,7 +42,6 @@ export const ConfirmTeamEmailTemplate = ({
   token = '',
 }: ConfirmTeamEmailProps) => {
   const { _ } = useLingui();
-  const branding = useBranding();
 
   const previewText = msg`Accept team email request for ${teamName} on Altitude Control Technology Documents`;
 
@@ -48,6 +52,7 @@ export const ConfirmTeamEmailTemplate = ({
 
       <Body className="mx-auto my-auto font-sans">
         <Section className="bg-white">
+<<<<<<< HEAD
           <Container className="mx-auto mb-2 mt-8 max-w-xl rounded-lg border border-solid border-slate-200 px-2 pt-2 backdrop-blur-sm">
             {branding.brandingEnabled && branding.brandingLogo ? (
               <Img src={branding.brandingLogo} alt="Branding Logo" className="mb-4 h-6 p-2" />
@@ -58,6 +63,10 @@ export const ConfirmTeamEmailTemplate = ({
                 staticAsset="logo.png"
               />
             )}
+=======
+          <Container className="mx-auto mt-8 mb-2 max-w-xl rounded-lg border border-slate-200 border-solid px-2 pt-2 backdrop-blur-sm">
+            <TemplateBrandingLogo assetBaseUrl={assetBaseUrl} className="mb-4 h-6 p-2" />
+>>>>>>> upstream/main
 
             <Section>
               <TemplateImage

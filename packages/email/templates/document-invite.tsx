@@ -4,10 +4,15 @@ import { Trans } from '@lingui/react/macro';
 import type { RecipientRole } from '@prisma/client';
 import { OrganisationType } from '@prisma/client';
 
+<<<<<<< HEAD
 import { RECIPIENT_ROLES_DESCRIPTION } from '@documenso/lib/constants/recipient-roles';
 
 import { Body, Container, Head, Hr, Html, Img, Link, Preview, Section, Text } from '../components';
 import { useBranding } from '../providers/branding';
+=======
+import { Body, Container, Head, Hr, Html, Link, Preview, Section, Text } from '../components';
+import { TemplateBrandingLogo } from '../template-components/template-branding-logo';
+>>>>>>> upstream/main
 import { TemplateCustomMessageBody } from '../template-components/template-custom-message-body';
 import type { TemplateDocumentInviteProps } from '../template-components/template-document-invite';
 import { TemplateDocumentInvite } from '../template-components/template-document-invite';
@@ -39,7 +44,6 @@ export const DocumentInviteEmailTemplate = ({
   reportUrl,
 }: DocumentInviteEmailTemplateProps) => {
   const { _ } = useLingui();
-  const branding = useBranding();
 
   const action = _(RECIPIENT_ROLES_DESCRIPTION[role].actionVerb).toLowerCase();
 
@@ -55,10 +59,6 @@ export const DocumentInviteEmailTemplate = ({
     previewText = msg`Please ${action} your document ${documentName}`;
   }
 
-  const getAssetUrl = (path: string) => {
-    return new URL(path, assetBaseUrl).toString();
-  };
-
   return (
     <Html>
       <Head />
@@ -68,6 +68,7 @@ export const DocumentInviteEmailTemplate = ({
         <Section>
           <Container className="mx-auto mb-2 mt-8 max-w-xl rounded-lg border border-solid border-slate-200 p-4 backdrop-blur-sm">
             <Section>
+<<<<<<< HEAD
               {branding.brandingEnabled && branding.brandingLogo ? (
                 <Img src={branding.brandingLogo} alt="Branding Logo" className="mb-4 h-6" />
               ) : (
@@ -77,6 +78,9 @@ export const DocumentInviteEmailTemplate = ({
                   className="mb-4 h-6"
                 />
               )}
+=======
+              <TemplateBrandingLogo assetBaseUrl={assetBaseUrl} className="mb-4 h-6" />
+>>>>>>> upstream/main
 
               <TemplateDocumentInvite
                 inviterName={inviterName}

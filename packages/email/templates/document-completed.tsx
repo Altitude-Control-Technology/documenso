@@ -1,8 +1,8 @@
 import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
 
-import { Body, Container, Head, Html, Img, Preview, Section } from '../components';
-import { useBranding } from '../providers/branding';
+import { Body, Container, Head, Html, Preview, Section } from '../components';
+import { TemplateBrandingLogo } from '../template-components/template-branding-logo';
 import type { TemplateDocumentCompletedProps } from '../template-components/template-document-completed';
 import { TemplateDocumentCompleted } from '../template-components/template-document-completed';
 import { TemplateFooter } from '../template-components/template-footer';
@@ -20,13 +20,8 @@ export const DocumentCompletedEmailTemplate = ({
   reportUrl,
 }: DocumentCompletedEmailTemplateProps) => {
   const { _ } = useLingui();
-  const branding = useBranding();
 
   const previewText = msg`Completed Document`;
-
-  const getAssetUrl = (path: string) => {
-    return new URL(path, assetBaseUrl).toString();
-  };
 
   return (
     <Html>
@@ -37,6 +32,7 @@ export const DocumentCompletedEmailTemplate = ({
         <Section className="bg-white">
           <Container className="mx-auto mb-2 mt-8 max-w-xl rounded-lg border border-solid border-slate-200 p-2 backdrop-blur-sm">
             <Section className="p-2">
+<<<<<<< HEAD
               {branding.brandingEnabled && branding.brandingLogo ? (
                 <Img src={branding.brandingLogo} alt="Branding Logo" className="mb-4 h-6" />
               ) : (
@@ -46,6 +42,9 @@ export const DocumentCompletedEmailTemplate = ({
                   className="mb-4 h-6"
                 />
               )}
+=======
+              <TemplateBrandingLogo assetBaseUrl={assetBaseUrl} className="mb-4 h-6" />
+>>>>>>> upstream/main
 
               <TemplateDocumentCompleted
                 downloadLink={downloadLink}

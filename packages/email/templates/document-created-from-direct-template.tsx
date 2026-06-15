@@ -3,10 +3,15 @@ import { useLingui } from '@lingui/react';
 import { Trans } from '@lingui/react/macro';
 import { RecipientRole } from '@prisma/client';
 
+<<<<<<< HEAD
 import { RECIPIENT_ROLES_DESCRIPTION } from '@documenso/lib/constants/recipient-roles';
 
 import { Body, Button, Container, Head, Html, Img, Preview, Section, Text } from '../components';
 import { useBranding } from '../providers/branding';
+=======
+import { Body, Button, Container, Head, Html, Preview, Section, Text } from '../components';
+import { TemplateBrandingLogo } from '../template-components/template-branding-logo';
+>>>>>>> upstream/main
 import TemplateDocumentImage from '../template-components/template-document-image';
 import { TemplateFooter } from '../template-components/template-footer';
 
@@ -26,15 +31,10 @@ export const DocumentCreatedFromDirectTemplateEmailTemplate = ({
   assetBaseUrl = 'http://localhost:3002',
 }: DocumentCompletedEmailTemplateProps) => {
   const { _ } = useLingui();
-  const branding = useBranding();
 
   const action = _(RECIPIENT_ROLES_DESCRIPTION[recipientRole].actioned).toLowerCase();
 
   const previewText = msg`Document created from direct template`;
-
-  const getAssetUrl = (path: string) => {
-    return new URL(path, assetBaseUrl).toString();
-  };
 
   return (
     <Html>
@@ -45,6 +45,7 @@ export const DocumentCreatedFromDirectTemplateEmailTemplate = ({
         <Section className="bg-white">
           <Container className="mx-auto mb-2 mt-8 max-w-xl rounded-lg border border-solid border-slate-200 p-2 backdrop-blur-sm">
             <Section className="p-2">
+<<<<<<< HEAD
               {branding.brandingEnabled && branding.brandingLogo ? (
                 <Img src={branding.brandingLogo} alt="Branding Logo" className="mb-4 h-6" />
               ) : (
@@ -54,6 +55,9 @@ export const DocumentCreatedFromDirectTemplateEmailTemplate = ({
                   className="mb-4 h-6"
                 />
               )}
+=======
+              <TemplateBrandingLogo assetBaseUrl={assetBaseUrl} className="mb-4 h-6" />
+>>>>>>> upstream/main
 
               <TemplateDocumentImage className="mt-6" assetBaseUrl={assetBaseUrl} />
 
