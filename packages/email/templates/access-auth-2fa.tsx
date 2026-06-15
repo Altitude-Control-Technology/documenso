@@ -24,7 +24,6 @@ export const AccessAuth2FAEmailTemplate = ({
   assetBaseUrl = 'http://localhost:3002',
 }: AccessAuth2FAEmailTemplateProps) => {
   const { _ } = useLingui();
-
   const branding = useBranding();
 
   const previewText = msg`Your verification code is ${code}`;
