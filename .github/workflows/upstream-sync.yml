@@ -130,6 +130,13 @@ jobs:
         if: steps.merge.outputs.status == 'conflict'
         env:
           GH_TOKEN: ${{ secrets.SYNC_PAT }}
+          # This repo is a FORK of documenso/documenso. Without GH_REPO, gh
+          # defaults the PR's base REPO to the parent (documenso/documenso),
+          # where `act-custom` doesn't exist — so `gh pr create --base
+          # act-custom` failed with "Base ref must be a branch / No commits
+          # between..." on every conflict week (seen 2026-05-13, 2026-06-15).
+          # Pin gh to our own repo so base + head resolve here.
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           DATE=$(date -u +%Y-%m-%d)
