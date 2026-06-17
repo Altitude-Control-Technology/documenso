@@ -3,8 +3,8 @@ import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
 import { RecipientRole } from '@prisma/client';
 
-import { Body, Container, Head, Hr, Html, Preview, Section, Text } from '../components';
-import { TemplateBrandingLogo } from '../template-components/template-branding-logo';
+import { Body, Container, Head, Hr, Html, Img, Preview, Section, Text } from '../components';
+import { useBranding } from '../providers/branding';
 import { TemplateCustomMessageBody } from '../template-components/template-custom-message-body';
 import { TemplateDocumentReminder } from '../template-components/template-document-reminder';
 import { TemplateFooter } from '../template-components/template-footer';
@@ -29,10 +29,15 @@ export const DocumentReminderEmailTemplate = ({
   reportUrl,
 }: DocumentReminderEmailTemplateProps) => {
   const { _ } = useLingui();
+  const branding = useBranding();
 
   const action = _(RECIPIENT_ROLES_DESCRIPTION[role].actionVerb).toLowerCase();
 
   const previewText = msg`Reminder to ${action} ${documentName}`;
+
+  const getAssetUrl = (path: string) => {
+    return new URL(path, assetBaseUrl).toString();
+  };
 
   return (
     <Html>
@@ -43,7 +48,11 @@ export const DocumentReminderEmailTemplate = ({
         <Section>
           <Container className="mx-auto mt-8 mb-2 max-w-xl rounded-lg border border-slate-200 border-solid p-4 backdrop-blur-sm">
             <Section>
-              <TemplateBrandingLogo assetBaseUrl={assetBaseUrl} className="mb-4 h-6" />
+              {branding.brandingEnabled && branding.brandingLogo ? (
+                <Img src={branding.brandingLogo} alt="Branding Logo" className="mb-4 h-6" />
+              ) : (
+                <Img src={getAssetUrl('/static/logo.png')} alt="Altitude Control Tech Logo" className="mb-4 h-6" />
+              )}
 
               <TemplateDocumentReminder
                 recipientName={recipientName}
