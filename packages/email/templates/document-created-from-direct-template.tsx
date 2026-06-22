@@ -42,8 +42,13 @@ export const DocumentCreatedFromDirectTemplateEmailTemplate = ({
       <Preview>{_(previewText)}</Preview>
 
       <Body className="mx-auto my-auto font-sans">
+<<<<<<< HEAD
         <Section className="bg-white">
           <Container className="mx-auto mb-2 mt-8 max-w-xl rounded-lg border border-solid border-slate-200 p-2 backdrop-blur-sm">
+=======
+        <Section className="bg-background">
+          <Container className="mx-auto mt-8 mb-2 max-w-xl rounded-lg border border-border border-solid p-2 backdrop-blur-sm">
+>>>>>>> upstream/main
             <Section className="p-2">
               {branding.brandingEnabled && branding.brandingLogo ? (
                 <Img src={branding.brandingLogo} alt="Branding Logo" className="mb-4 h-6" />
@@ -58,19 +63,31 @@ export const DocumentCreatedFromDirectTemplateEmailTemplate = ({
               <TemplateDocumentImage className="mt-6" assetBaseUrl={assetBaseUrl} />
 
               <Section>
+<<<<<<< HEAD
                 <Text className="text-primary mb-0 text-center text-lg font-semibold">
+=======
+                <Text className="mb-0 text-center font-semibold text-foreground text-lg">
+>>>>>>> upstream/main
                   <Trans>
                     {recipientName} {action} a document by using one of your direct links
                   </Trans>
                 </Text>
 
+<<<<<<< HEAD
                 <div className="mx-auto my-2 w-fit rounded-lg bg-gray-50 px-4 py-2 text-sm text-slate-600">
+=======
+                <div className="mx-auto my-2 w-fit rounded-lg bg-muted px-4 py-2 text-muted-foreground text-sm">
+>>>>>>> upstream/main
                   {documentName}
                 </div>
 
                 <Section className="my-6 text-center">
                   <Button
+<<<<<<< HEAD
                     className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-6 py-3 text-center text-sm font-medium text-white no-underline"
+=======
+                    className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-center font-medium text-primary-foreground text-sm no-underline"
+>>>>>>> upstream/main
                     href={documentLink}
                   >
                     <Trans>View document</Trans>
