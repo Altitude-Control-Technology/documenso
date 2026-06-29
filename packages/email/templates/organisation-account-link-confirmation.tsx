@@ -42,8 +42,8 @@ export const OrganisationAccountLinkConfirmationTemplate = ({
   return (
     <Html>
       <Head />
-      <Preview>{_(previewText)}</Preview>
       <Body className="mx-auto my-auto font-sans">
+<<<<<<< HEAD
         <Section className="bg-white">
           <Container className="mx-auto mb-2 mt-8 max-w-xl rounded-lg border border-solid border-slate-200 px-2 pt-2 backdrop-blur-sm">
             {branding.brandingEnabled && branding.brandingLogo ? (
@@ -55,6 +55,13 @@ export const OrganisationAccountLinkConfirmationTemplate = ({
                 staticAsset="logo.png"
               />
             )}
+=======
+        <Preview>{_(previewText)}</Preview>
+
+        <Section className="bg-background">
+          <Container className="mx-auto mt-8 mb-2 max-w-xl rounded-lg border border-border border-solid px-2 pt-2 backdrop-blur-sm">
+            <TemplateBrandingLogo assetBaseUrl={assetBaseUrl} className="mb-4 h-6 p-2" />
+>>>>>>> upstream/main
 
             <Section>
               <TemplateImage
@@ -64,8 +71,13 @@ export const OrganisationAccountLinkConfirmationTemplate = ({
               />
             </Section>
 
+<<<<<<< HEAD
             <Section className="p-2 text-slate-500">
               <Text className="text-center text-lg font-medium text-black">
+=======
+            <Section className="p-2 text-muted-foreground">
+              <Text className="text-center font-medium text-foreground text-lg">
+>>>>>>> upstream/main
                 {type === 'create' ? (
                   <Trans>Account creation request</Trans>
                 ) : (
@@ -119,7 +131,11 @@ export const OrganisationAccountLinkConfirmationTemplate = ({
 
               <Section className="mb-6 mt-8 text-center">
                 <Button
+<<<<<<< HEAD
                   className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-6 py-3 text-center text-sm font-medium text-white no-underline"
+=======
+                  className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-center font-medium text-primary-foreground text-sm no-underline"
+>>>>>>> upstream/main
                   href={confirmationLink}
                 >
                   <Trans>Review request</Trans>
@@ -127,7 +143,11 @@ export const OrganisationAccountLinkConfirmationTemplate = ({
               </Section>
             </Section>
 
+<<<<<<< HEAD
             <Text className="text-center text-xs text-slate-500">
+=======
+            <Text className="text-center text-muted-foreground text-xs">
+>>>>>>> upstream/main
               <Trans>Link expires in 30 minutes.</Trans>
             </Text>
           </Container>
