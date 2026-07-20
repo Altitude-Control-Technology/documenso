@@ -19,17 +19,25 @@ export const TemplateResetPassword = ({ assetBaseUrl }: TemplateResetPasswordPro
       <TemplateDocumentImage className="mt-6" assetBaseUrl={assetBaseUrl} />
 
       <Section className="flex-row items-center justify-center">
+<<<<<<< HEAD
         <Text className="text-primary mx-auto mb-0 max-w-[80%] text-center text-lg font-semibold">
+=======
+        <Text className="mx-auto mb-0 max-w-[80%] text-center font-semibold text-foreground text-lg">
+>>>>>>> upstream/main
           <Trans>Password updated!</Trans>
         </Text>
 
-        <Text className="my-1 text-center text-base text-slate-400">
+        <Text className="my-1 text-center text-base text-muted-foreground">
           <Trans>Your password has been updated.</Trans>
         </Text>
 
         <Section className="mb-6 mt-8 text-center">
           <Button
+<<<<<<< HEAD
             className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-6 py-3 text-center text-sm font-medium text-white no-underline"
+=======
+            className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-center font-medium text-primary-foreground text-sm no-underline"
+>>>>>>> upstream/main
             href={`${NEXT_PUBLIC_WEBAPP_URL ?? 'http://localhost:3000'}/signin`}
           >
             <Trans>Sign In</Trans>
