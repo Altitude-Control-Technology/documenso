@@ -33,11 +33,16 @@ export const DocumentRecipientSignedEmailTemplate = ({
   return (
     <Html>
       <Head />
-      <Preview>{_(previewText)}</Preview>
-
       <Body className="mx-auto my-auto font-sans">
+<<<<<<< HEAD
         <Section className="bg-white">
           <Container className="mx-auto mb-2 mt-8 max-w-xl rounded-lg border border-solid border-slate-200 p-2 backdrop-blur-sm">
+=======
+        <Preview>{_(previewText)}</Preview>
+
+        <Section className="bg-background">
+          <Container className="mx-auto mt-8 mb-2 max-w-xl rounded-lg border border-border border-solid p-2 backdrop-blur-sm">
+>>>>>>> upstream/main
             <Section className="p-2">
               {branding.brandingEnabled && branding.brandingLogo ? (
                 <Img src={branding.brandingLogo} alt="Branding Logo" className="mb-4 h-6" />
