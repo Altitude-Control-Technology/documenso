@@ -5,8 +5,16 @@ on:
     branches:
       - act-custom
     paths:
-      - backend/documenso/**
+      # The app source actually lives in the upstream monorepo layout. The old
+      # filter pointed at backend/documenso/**, a path that does not exist in
+      # this repo, so upstream syncs never triggered a deploy and the running
+      # image silently drifted behind act-custom.
+      - apps/**
+      - packages/**
+      - docker/**
       - infrastructure/**
+      - package.json
+      - package-lock.json
       - .github/workflows/documenso-ecs-deploy.yml
   workflow_dispatch:
     inputs:
