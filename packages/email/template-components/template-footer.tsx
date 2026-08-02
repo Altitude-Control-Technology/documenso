@@ -32,15 +32,9 @@ export const TemplateFooter = ({ isDocument = true, reportUrl }: TemplateFooterP
       {isDocument && !branding.brandingHidePoweredBy && (
         <Text className="my-4 text-base text-muted-foreground">
           <Trans>
-<<<<<<< HEAD
             This document was sent from{' '}
             <Link className="text-[#193443]" href="https://altitudecontrol.com/">
               Altitude Control Technology
-=======
-            This document was sent using{' '}
-            <Link className="text-primary" href="https://documen.so/mail-footer">
-              Documenso
->>>>>>> upstream/main
             </Link>
             .
           </Trans>
@@ -48,11 +42,7 @@ export const TemplateFooter = ({ isDocument = true, reportUrl }: TemplateFooterP
       )}
 
       {branding.brandingEnabled && branding.brandingCompanyDetails && (
-<<<<<<< HEAD
-        <Text className="my-8 text-sm text-slate-400">
-=======
         <Text className="my-8 text-muted-foreground text-sm">
->>>>>>> upstream/main
           {branding.brandingCompanyDetails.split('\n').map((line, idx) => {
             return (
               <Fragment key={idx}>
@@ -73,13 +63,8 @@ export const TemplateFooter = ({ isDocument = true, reportUrl }: TemplateFooterP
       )}
 
       {!branding.brandingEnabled && (
-<<<<<<< HEAD
-        <Text className="my-8 text-sm text-slate-400">
-          Altitude Control Technology LLC
-=======
         <Text className="my-8 text-muted-foreground text-sm">
-          Documenso, Inc.
->>>>>>> upstream/main
+          Altitude Control Technology LLC
           <br />
           210 Edwards Village Blvd Unit C-103 PO BOX 98, Edwards CO 81632 USA
         </Text>

@@ -2,8 +2,8 @@ import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
 import { Trans } from '@lingui/react/macro';
 
-import { Body, Container, Head, Hr, Html, Img, Preview, Section, Text } from '../components';
-import { useBranding } from '../providers/branding';
+import { Body, Container, Head, Hr, Html, Preview, Section, Text } from '../components';
+import { TemplateBrandingLogo } from '../template-components/template-branding-logo';
 import type { TemplateDocumentCancelProps } from '../template-components/template-document-cancel';
 import TemplateDocumentImage from '../template-components/template-document-image';
 import { TemplateFooter } from '../template-components/template-footer';
@@ -16,13 +16,8 @@ export const RecipientRemovedFromDocumentTemplate = ({
   assetBaseUrl = 'http://localhost:3002',
 }: DocumentCancelEmailTemplateProps) => {
   const { _ } = useLingui();
-  const branding = useBranding();
 
   const previewText = msg`${inviterName} has removed you from the document ${documentName}.`;
-
-  const getAssetUrl = (path: string) => {
-    return new URL(path, assetBaseUrl).toString();
-  };
 
   return (
     <Html>
@@ -32,30 +27,14 @@ export const RecipientRemovedFromDocumentTemplate = ({
         <Preview>{_(previewText)}</Preview>
 
         <Section>
-<<<<<<< HEAD
-          <Container className="mx-auto mb-2 mt-8 max-w-xl rounded-lg border border-solid border-slate-200 p-4 backdrop-blur-sm">
-=======
           <Container className="mx-auto mt-8 mb-2 max-w-xl rounded-lg border border-border border-solid p-4 backdrop-blur-sm">
->>>>>>> upstream/main
             <Section>
-              {branding.brandingEnabled && branding.brandingLogo ? (
-                <Img src={branding.brandingLogo} alt="Branding Logo" className="mb-4 h-6" />
-              ) : (
-                <Img
-                  src={getAssetUrl('/static/logo.png')}
-                  alt="Altitude Control Tech Logo"
-                  className="mb-4 h-6"
-                />
-              )}
+              <TemplateBrandingLogo assetBaseUrl={assetBaseUrl} className="mb-4 h-6" />
 
               <TemplateDocumentImage className="mt-6" assetBaseUrl={assetBaseUrl} />
 
               <Section>
-<<<<<<< HEAD
-                <Text className="text-primary mx-auto mb-0 max-w-[80%] text-center text-lg font-semibold">
-=======
                 <Text className="mx-auto mb-0 max-w-[80%] text-center font-semibold text-foreground text-lg">
->>>>>>> upstream/main
                   <Trans>
                     {inviterName} has removed you from the document
                     <br />"{documentName}"

@@ -1,9 +1,9 @@
 import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
 
-import { Body, Container, Head, Html, Img, Preview, Section } from '../components';
-import { useBranding } from '../providers/branding';
+import { Body, Container, Head, Html, Preview, Section } from '../components';
 import { TemplateAccessAuth2FA } from '../template-components/template-access-auth-2fa';
+import { TemplateBrandingLogo } from '../template-components/template-branding-logo';
 import { TemplateFooter } from '../template-components/template-footer';
 
 export type AccessAuth2FAEmailTemplateProps = {
@@ -24,13 +24,8 @@ export const AccessAuth2FAEmailTemplate = ({
   assetBaseUrl = 'http://localhost:3002',
 }: AccessAuth2FAEmailTemplateProps) => {
   const { _ } = useLingui();
-  const branding = useBranding();
 
   const previewText = msg`Your verification code is ${code}`;
-
-  const getAssetUrl = (path: string) => {
-    return new URL(path, assetBaseUrl).toString();
-  };
 
   return (
     <Html>
@@ -40,21 +35,9 @@ export const AccessAuth2FAEmailTemplate = ({
         <Preview>{_(previewText)}</Preview>
 
         <Section>
-<<<<<<< HEAD
-          <Container className="mx-auto mb-2 mt-8 max-w-xl rounded-lg border border-solid border-slate-200 p-4 backdrop-blur-sm">
-=======
           <Container className="mx-auto mt-8 mb-2 max-w-xl rounded-lg border border-border border-solid p-4 backdrop-blur-sm">
->>>>>>> upstream/main
             <Section>
-              {branding.brandingEnabled && branding.brandingLogo ? (
-                <Img src={branding.brandingLogo} alt="Branding Logo" className="mb-4 h-6" />
-              ) : (
-                <Img
-                  src={getAssetUrl('/static/logo.png')}
-                  alt="Altitude Control Tech Logo"
-                  className="mb-4 h-6"
-                />
-              )}
+              <TemplateBrandingLogo assetBaseUrl={assetBaseUrl} className="mb-4 h-6" />
 
               <TemplateAccessAuth2FA
                 documentTitle={documentTitle}

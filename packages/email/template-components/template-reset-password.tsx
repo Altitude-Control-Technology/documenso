@@ -1,6 +1,5 @@
-import { Trans } from '@lingui/react/macro';
-
 import { env } from '@documenso/lib/utils/env';
+import { Trans } from '@lingui/react/macro';
 
 import { Button, Section, Text } from '../components';
 import { TemplateDocumentImage } from './template-document-image';
@@ -19,11 +18,7 @@ export const TemplateResetPassword = ({ assetBaseUrl }: TemplateResetPasswordPro
       <TemplateDocumentImage className="mt-6" assetBaseUrl={assetBaseUrl} />
 
       <Section className="flex-row items-center justify-center">
-<<<<<<< HEAD
-        <Text className="text-primary mx-auto mb-0 max-w-[80%] text-center text-lg font-semibold">
-=======
         <Text className="mx-auto mb-0 max-w-[80%] text-center font-semibold text-foreground text-lg">
->>>>>>> upstream/main
           <Trans>Password updated!</Trans>
         </Text>
 
@@ -31,13 +26,9 @@ export const TemplateResetPassword = ({ assetBaseUrl }: TemplateResetPasswordPro
           <Trans>Your password has been updated.</Trans>
         </Text>
 
-        <Section className="mb-6 mt-8 text-center">
+        <Section className="mt-8 mb-6 text-center">
           <Button
-<<<<<<< HEAD
-            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-6 py-3 text-center text-sm font-medium text-white no-underline"
-=======
             className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-center font-medium text-primary-foreground text-sm no-underline"
->>>>>>> upstream/main
             href={`${NEXT_PUBLIC_WEBAPP_URL ?? 'http://localhost:3000'}/signin`}
           >
             <Trans>Sign In</Trans>

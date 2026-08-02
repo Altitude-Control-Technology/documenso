@@ -2,19 +2,8 @@ import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
 import { Trans } from '@lingui/react/macro';
 
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Hr,
-  Html,
-  Img,
-  Preview,
-  Section,
-  Text,
-} from '../components';
-import { useBranding } from '../providers/branding';
+import { Body, Button, Container, Head, Hr, Html, Preview, Section, Text } from '../components';
+import { TemplateBrandingLogo } from '../template-components/template-branding-logo';
 import { TemplateFooter } from '../template-components/template-footer';
 import TemplateImage from '../template-components/template-image';
 
@@ -32,7 +21,6 @@ export const OrganisationAccountLinkConfirmationTemplate = ({
   assetBaseUrl = 'http://localhost:3002',
 }: OrganisationAccountLinkConfirmationTemplateProps) => {
   const { _ } = useLingui();
-  const branding = useBranding();
 
   const previewText =
     type === 'create'
@@ -43,41 +31,18 @@ export const OrganisationAccountLinkConfirmationTemplate = ({
     <Html>
       <Head />
       <Body className="mx-auto my-auto font-sans">
-<<<<<<< HEAD
-        <Section className="bg-white">
-          <Container className="mx-auto mb-2 mt-8 max-w-xl rounded-lg border border-solid border-slate-200 px-2 pt-2 backdrop-blur-sm">
-            {branding.brandingEnabled && branding.brandingLogo ? (
-              <Img src={branding.brandingLogo} alt="Branding Logo" className="mb-4 h-6 p-2" />
-            ) : (
-              <TemplateImage
-                assetBaseUrl={assetBaseUrl}
-                className="mb-4 h-6 p-2"
-                staticAsset="logo.png"
-              />
-            )}
-=======
         <Preview>{_(previewText)}</Preview>
 
         <Section className="bg-background">
           <Container className="mx-auto mt-8 mb-2 max-w-xl rounded-lg border border-border border-solid px-2 pt-2 backdrop-blur-sm">
             <TemplateBrandingLogo assetBaseUrl={assetBaseUrl} className="mb-4 h-6 p-2" />
->>>>>>> upstream/main
 
             <Section>
-              <TemplateImage
-                className="mx-auto h-12 w-12"
-                assetBaseUrl={assetBaseUrl}
-                staticAsset="building-2.png"
-              />
+              <TemplateImage className="mx-auto h-12 w-12" assetBaseUrl={assetBaseUrl} staticAsset="building-2.png" />
             </Section>
 
-<<<<<<< HEAD
-            <Section className="p-2 text-slate-500">
-              <Text className="text-center text-lg font-medium text-black">
-=======
             <Section className="p-2 text-muted-foreground">
               <Text className="text-center font-medium text-foreground text-lg">
->>>>>>> upstream/main
                 {type === 'create' ? (
                   <Trans>Account creation request</Trans>
                 ) : (
@@ -88,13 +53,13 @@ export const OrganisationAccountLinkConfirmationTemplate = ({
               <Text className="text-center text-base">
                 {type === 'create' ? (
                   <Trans>
-                    <span className="font-bold">{organisationName}</span> has requested to create an
-                    account on your behalf.
+                    <span className="font-bold">{organisationName}</span> has requested to create an account on your
+                    behalf.
                   </Trans>
                 ) : (
                   <Trans>
-                    <span className="font-bold">{organisationName}</span> has requested to link your
-                    current Altitude Control Technology Documents account to their organisation.
+                    <span className="font-bold">{organisationName}</span> has requested to link your current Altitude
+                    Control Technology Documents account to their organisation.
                   </Trans>
                 )}
               </Text>
@@ -129,13 +94,9 @@ export const OrganisationAccountLinkConfirmationTemplate = ({
                 </Text>
               </Section> */}
 
-              <Section className="mb-6 mt-8 text-center">
+              <Section className="mt-8 mb-6 text-center">
                 <Button
-<<<<<<< HEAD
-                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-6 py-3 text-center text-sm font-medium text-white no-underline"
-=======
                   className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-center font-medium text-primary-foreground text-sm no-underline"
->>>>>>> upstream/main
                   href={confirmationLink}
                 >
                   <Trans>Review request</Trans>
@@ -143,11 +104,7 @@ export const OrganisationAccountLinkConfirmationTemplate = ({
               </Section>
             </Section>
 
-<<<<<<< HEAD
-            <Text className="text-center text-xs text-slate-500">
-=======
             <Text className="text-center text-muted-foreground text-xs">
->>>>>>> upstream/main
               <Trans>Link expires in 30 minutes.</Trans>
             </Text>
           </Container>
