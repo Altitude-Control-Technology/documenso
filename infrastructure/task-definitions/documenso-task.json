@@ -21,10 +21,6 @@
       ],
       "environment": [
         {
-          "name": "REDIS_URL",
-          "value": "redis://doc-do-1rhe33sr54huo.gltwk5.0001.use1.cache.amazonaws.com:6379"
-        },
-        {
           "name": "STORAGE_S3_BUCKET",
           "value": "prod-documenso-assets-624464340576"
         },
