@@ -102,6 +102,7 @@ jobs:
             echo "Anything outside these paths cannot directly break the integration.)"
             echo
             for path in \
+              packages/prisma/migrations \
               packages/trpc/server/envelope-router \
               packages/lib/types/webhook-payload.ts \
               packages/lib/server-only/pdf/auto-place-fields.ts \
