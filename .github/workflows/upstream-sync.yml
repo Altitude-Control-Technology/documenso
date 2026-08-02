@@ -19,6 +19,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  id-token: write # assume the AWS role that publishes sync alerts
 
 env:
   UPSTREAM_REPO: https://github.com/documenso/documenso.git
@@ -127,6 +128,7 @@ jobs:
           git push origin "$REBASE_BRANCH"
 
       - name: Push conflict branch and open PR
+        id: conflict_pr
         if: steps.merge.outputs.status == 'conflict'
         env:
           GH_TOKEN: ${{ secrets.SYNC_PAT }}
@@ -177,11 +179,69 @@ jobs:
           } > /tmp/sync-pr-body.md
 
           if gh pr list --head "$SYNC_BRANCH" --json number --jq 'length' | grep -q '^0$'; then
-            gh pr create \
+            PR_URL=$(gh pr create \
               --base "$REBASE_BRANCH" \
               --head "$SYNC_BRANCH" \
               --title "Weekly upstream sync ($DATE) — conflicts need review" \
-              --body-file /tmp/sync-pr-body.md
+              --body-file /tmp/sync-pr-body.md)
           else
             echo "PR for $SYNC_BRANCH already exists; updated branch in place."
+            PR_URL=$(gh pr list --head "$SYNC_BRANCH" --json url --jq '.[0].url')
           fi
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "sync_branch=$SYNC_BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials for alerting
+        if: always() && (steps.merge.outputs.status == 'conflict' || failure())
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DOCUMENSO_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Email on conflicts needing review
+        if: steps.merge.outputs.status == 'conflict'
+        env:
+          PR_URL: ${{ steps.conflict_pr.outputs.pr_url }}
+          SYNC_BRANCH: ${{ steps.conflict_pr.outputs.sync_branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          {
+            echo "The weekly upstream sync could not merge cleanly. It has opened a"
+            echo "pull request with conflict markers committed to the branch, and it is"
+            echo "waiting on a human."
+            echo
+            echo "Nothing reaches production until that PR is merged, so the fork stays"
+            echo "behind upstream until someone acts on this."
+            echo
+            echo "Pull request: ${PR_URL:-<none>}"
+            echo "Branch:       ${SYNC_BRANCH:-<none>}"
+            echo "Workflow run: $RUN_URL"
+            echo
+            echo "Conflicted files:"
+            sed 's/^/  - /' /tmp/sync-unresolved.txt
+            echo
+            echo "Note: the branch contains literal <<<<<<< markers. GitHub will still"
+            echo "report the PR mergeable, because they are only file content. Do not"
+            echo "merge before resolving them."
+          } > /tmp/alert.txt
+          aws sns publish --region us-east-1 \
+            --topic-arn arn:aws:sns:us-east-1:624464340576:documenso-sync-alerts \
+            --subject "Documenso upstream sync needs review (conflicts)" \
+            --message file:///tmp/alert.txt > /dev/null
+          echo "Alert sent."
+
+      - name: Email on sync failure
+        if: failure()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            "The weekly upstream sync FAILED. The fork is not up to date with upstream." \
+            "" \
+            "Workflow run: $RUN_URL" > /tmp/fail.txt
+          aws sns publish --region us-east-1 \
+            --topic-arn arn:aws:sns:us-east-1:624464340576:documenso-sync-alerts \
+            --subject "Documenso upstream sync FAILED" \
+            --message file:///tmp/fail.txt > /dev/null
