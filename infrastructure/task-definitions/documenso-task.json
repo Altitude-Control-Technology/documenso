@@ -53,10 +53,6 @@
           "value": "false"
         },
         {
-          "name": "REMINDER_QUEUE_URL",
-          "value": "https://sqs.us-east-1.amazonaws.com/624464340576/prod-documenso-reminders"
-        },
-        {
           "name": "WEBHOOK_SECRET_SSM_PATH",
           "value": "/prod/documenso/webhook-secret"
         },
