@@ -13,11 +13,11 @@ export const TemplateDocumentImage = ({ assetBaseUrl, className }: TemplateDocum
         <Column />
 
         <Column>
-<<<<<<< HEAD
-          <Img className="mx-auto h-42" src={getAssetUrl('/static/document.png')} alt="Altitude Control Technology" />
-=======
-          <Img className="mx-auto h-42" src={getEmailAssetUrl(assetBaseUrl, 'static/document.png')} alt="Documenso" />
->>>>>>> upstream/main
+          <Img
+            className="mx-auto h-42"
+            src={getEmailAssetUrl(assetBaseUrl, 'static/document.png')}
+            alt="Altitude Control Technology"
+          />
         </Column>
 
         <Column />
